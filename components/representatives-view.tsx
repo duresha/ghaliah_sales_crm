@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,12 +9,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, Phone, Mail, Building2, FileText, Plus, Edit, TrendingUp } from "lucide-react"
 import { RepresentativeForm } from "@/components/representative-form"
+import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/hooks/use-toast"
 
 interface Representative {
   id: string
   name: string
   email: string
-  role: "Rep" | "Manager" | "Admin"
+  role: "rep" | "manager" | "admin"
   phone: string
   assignedCompanies: number
   assignedProposals: number
@@ -23,99 +25,85 @@ interface Representative {
   lastActivity: string
 }
 
-const sampleRepresentatives: Representative[] = [
-  {
-    id: "1",
-    name: "Ahmed Al-Rashid",
-    email: "ahmed.rashid@ghaliah.com",
-    role: "Rep",
-    phone: "+966 50 123 4567",
-    assignedCompanies: 12,
-    assignedProposals: 8,
-    totalRevenue: 245000,
-    conversionRate: 75,
-    lastActivity: "2024-12-10",
-  },
-  {
-    id: "2",
-    name: "Sarah Al-Mahmoud",
-    email: "sarah.mahmoud@ghaliah.com",
-    role: "Rep",
-    phone: "+966 55 234 5678",
-    assignedCompanies: 10,
-    assignedProposals: 6,
-    totalRevenue: 180000,
-    conversionRate: 68,
-    lastActivity: "2024-12-09",
-  },
-  {
-    id: "3",
-    name: "Mohammed Al-Zahra",
-    email: "mohammed.zahra@ghaliah.com",
-    role: "Manager",
-    phone: "+966 50 345 6789",
-    assignedCompanies: 15,
-    assignedProposals: 12,
-    totalRevenue: 320000,
-    conversionRate: 82,
-    lastActivity: "2024-12-10",
-  },
-  {
-    id: "4",
-    name: "Fatima Al-Qasimi",
-    email: "fatima.qasimi@ghaliah.com",
-    role: "Rep",
-    phone: "+971 50 456 7890",
-    assignedCompanies: 8,
-    assignedProposals: 5,
-    totalRevenue: 125000,
-    conversionRate: 62,
-    lastActivity: "2024-12-08",
-  },
-  {
-    id: "5",
-    name: "Omar Al-Sayed",
-    email: "omar.sayed@ghaliah.com",
-    role: "Admin",
-    phone: "+966 55 567 8901",
-    assignedCompanies: 0,
-    assignedProposals: 0,
-    totalRevenue: 0,
-    conversionRate: 0,
-    lastActivity: "2024-12-10",
-  },
-]
-
 interface RepresentativesViewProps {
   userRole: "Admin" | "Manager" | "Rep"
 }
 
 export function RepresentativesView({ userRole }: RepresentativesViewProps) {
-  const [representatives, setRepresentatives] = useState<Representative[]>(sampleRepresentatives)
+  const [representatives, setRepresentatives] = useState<Representative[]>([])
   const [showRepresentativeForm, setShowRepresentativeForm] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
+  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
+
+  // Fetch representatives from Supabase
+  const fetchRepresentatives = async () => {
+    setIsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .order("name")
+
+      if (error) {
+        throw error
+      }
+
+      if (data) {
+        // Transform data to match Representative interface
+        const formattedData = data.map(user => ({
+          id: user.id,
+          name: user.name || "",
+          email: user.email,
+          role: user.role as "rep" | "manager" | "admin",
+          phone: user.phone || "",
+          assignedCompanies: user.assigned_companies || 0,
+          assignedProposals: user.assigned_proposals || 0,
+          totalRevenue: user.total_revenue || 0,
+          conversionRate: user.conversion_rate || 0,
+          lastActivity: user.last_activity || new Date().toISOString().split("T")[0],
+        }));
+        setRepresentatives(formattedData);
+      }
+    } catch (error: any) {
+      console.error("Error fetching representatives:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load team members. Please refresh the page.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Fetch representatives on component mount
+  useEffect(() => {
+    fetchRepresentatives()
+  }, [])
 
   const filteredRepresentatives = representatives.filter((rep) => {
     const matchesSearch =
       rep.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rep.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = roleFilter === "all" || rep.role === roleFilter
+    const matchesRole = roleFilter === "all" || rep.role === roleFilter.toLowerCase()
 
     return matchesSearch && matchesRole
   })
 
   const handleAddRepresentative = (newRepresentative: Representative) => {
-    setRepresentatives((prev) => [...prev, newRepresentative])
+    // Add the new representative to the list and refresh from server
+    fetchRepresentatives()
   }
 
   const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case "Admin":
+    switch (role.toLowerCase()) {
+      case "admin":
         return "destructive"
-      case "Manager":
+      case "manager":
         return "default"
-      case "Rep":
+      case "rep":
         return "secondary"
       default:
         return "outline"
@@ -128,7 +116,7 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
     totalProposals: representatives.reduce((sum, rep) => sum + rep.assignedProposals, 0),
     avgConversion: Math.round(
       representatives.filter((r) => r.conversionRate > 0).reduce((sum, rep) => sum + rep.conversionRate, 0) /
-        representatives.filter((r) => r.conversionRate > 0).length,
+        Math.max(1, representatives.filter((r) => r.conversionRate > 0).length),
     ),
   }
 
@@ -202,6 +190,10 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
         </div>
       </div>
 
+      {isLoading ? (
+        <div className="text-center py-10">Loading team members...</div>
+      ) : (
+        <>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredRepresentatives.map((rep) => (
           <Card key={rep.id} className="hover:shadow-md transition-shadow">
@@ -229,7 +221,7 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
             <CardContent className="space-y-4">
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Phone className="h-4 w-4" />
-                {rep.phone}
+                    {rep.phone || "No phone number"}
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -338,6 +330,8 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
           </Table>
         </CardContent>
       </Card>
+        </>
+      )}
       {showRepresentativeForm && (
         <RepresentativeForm
           onClose={() => setShowRepresentativeForm(false)}

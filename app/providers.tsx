@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from "react"
 import { SessionProvider } from "next-auth/react"
+import { Toaster } from "@/components/ui/toaster"
+import { toast } from "@/hooks/use-toast"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
+    // Remove test toast
   }, [])
 
   // Always wrap children in SessionProvider, regardless of mounted state
@@ -15,6 +18,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       {children}
+      {/* Add Toaster at the root level to ensure it's always available */}
+      <Toaster />
     </SessionProvider>
   )
 }

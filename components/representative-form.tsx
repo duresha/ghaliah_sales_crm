@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { X, Users, Mail, Phone } from "lucide-react"
+import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/hooks/use-toast"
 
 interface RepresentativeFormProps {
   onClose: () => void
@@ -19,7 +21,7 @@ interface RepresentativeFormProps {
 interface RepresentativeData {
   name: string
   email: string
-  role: "Rep" | "Manager" | "Admin"
+  role: "rep" | "manager" | "admin"
   phone: string
 }
 
@@ -27,33 +29,85 @@ export function RepresentativeForm({ onClose, onSubmit, userRole }: Representati
   const [formData, setFormData] = useState<RepresentativeData>({
     name: "",
     email: "",
-    role: "Rep",
+    role: "rep",
     phone: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [emailError, setEmailError] = useState("")
+  const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setEmailError("")
 
-    // Simulate API call
-    setTimeout(() => {
-      const newRepresentative = {
-        id: Date.now().toString(),
-        ...formData,
-        assignedCompanies: 0,
-        assignedProposals: 0,
-        totalRevenue: 0,
-        conversionRate: 0,
-        lastActivity: new Date().toISOString().split("T")[0],
+    try {
+      // Check if email already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from("users")
+        .select("email")
+        .eq("email", formData.email)
+        .single()
+
+      if (checkError && checkError.code !== "PGRST116") {
+        throw new Error("Error checking email uniqueness")
       }
-      onSubmit(newRepresentative)
+
+      if (existingUser) {
+        setEmailError("This email address is already registered")
+        setIsSubmitting(false)
+        return
+      }
+
+      // Insert new user
+      const { data, error } = await supabase.from("users").insert({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        role: formData.role,
+      }).select()
+
+      if (error) {
+        throw error
+      }
+
+      // Show success toast
+      toast({
+        title: "Success",
+        description: "New team member added successfully",
+      })
+
+      // Add user to local state via onSubmit callback
+      if (data && data.length > 0) {
+        const newRepresentative = {
+          id: data[0].id,
+          name: data[0].name,
+          email: data[0].email,
+          role: data[0].role as "Rep" | "Manager" | "Admin",
+          phone: data[0].phone || "",
+          assignedCompanies: 0,
+          assignedProposals: 0,
+          totalRevenue: 0,
+          conversionRate: 0,
+          lastActivity: new Date().toISOString().split("T")[0],
+        }
+        onSubmit(newRepresentative)
+      }
+      
       setIsSubmitting(false)
       onClose()
-    }, 1000)
+    } catch (error: any) {
+      console.error("Error adding new representative:", error)
+      toast({
+        title: "Error",
+        description: "Failed to add team member. Please try again.",
+        variant: "destructive",
+      })
+      setIsSubmitting(false)
+    }
   }
 
-  const isFormValid = formData.name && formData.email && formData.phone
+  const isFormValid = formData.name && formData.email && formData.phone && !emailError
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -94,12 +148,16 @@ export function RepresentativeForm({ onClose, onSubmit, userRole }: Representati
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, email: e.target.value }))
+                    setEmailError("")
+                  }}
                   placeholder="Enter email address"
-                  className="pl-10"
+                  className={`pl-10 ${emailError ? 'border-red-500' : ''}`}
                   required
                 />
               </div>
+              {emailError && <p className="text-sm text-red-500">{emailError}</p>}
             </div>
 
             <div className="space-y-2">
@@ -122,7 +180,7 @@ export function RepresentativeForm({ onClose, onSubmit, userRole }: Representati
               <Label htmlFor="role">Role</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: "Rep" | "Manager" | "Admin") =>
+                onValueChange={(value: "rep" | "manager" | "admin") =>
                   setFormData((prev) => ({ ...prev, role: value }))
                 }
               >
@@ -130,9 +188,9 @@ export function RepresentativeForm({ onClose, onSubmit, userRole }: Representati
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Rep">Sales Representative</SelectItem>
-                  <SelectItem value="Manager">Manager</SelectItem>
-                  {userRole === "Admin" && <SelectItem value="Admin">Admin</SelectItem>}
+                  <SelectItem value="rep">Sales Representative</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  {userRole === "Admin" && <SelectItem value="admin">Admin</SelectItem>}
                 </SelectContent>
               </Select>
             </div>

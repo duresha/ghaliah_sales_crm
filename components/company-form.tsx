@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { X, Building2, Calendar } from "lucide-react"
+import { X, Building2, Calendar, Loader2 } from "lucide-react"
+import { supabase } from "@/lib/supabaseClient"
+import { useToast } from "@/hooks/use-toast"
 
 interface CompanyFormProps {
   onClose: () => void
@@ -24,11 +26,18 @@ interface CompanyData {
   industry: string
   region: string
   status: "Lead" | "Proposal Sent" | "Follow-Up" | "Accepted" | "Closed"
-  assignedRep: string
-  reminderDate: string
-  deadlineDate: string
+  assigned_rep: string  // Changed to match Supabase schema
+  reminder_date: string // Changed to match Supabase schema
+  deadline_date: string // Added to match requirements
   tags: string[]
   notes: string
+}
+
+interface Representative {
+  id: string
+  name: string
+  email: string
+  role: string
 }
 
 const industries = [
@@ -45,8 +54,6 @@ const industries = [
 ]
 
 const regions = ["Riyadh", "Jeddah", "Dubai", "Kuwait", "Doha", "Abu Dhabi", "Manama", "Muscat"]
-
-const representatives = ["Ahmed Al-Rashid", "Sarah Al-Mahmoud", "Mohammed Al-Zahra", "Fatima Al-Qasimi"]
 
 const availableTags = [
   "High Priority",
@@ -67,13 +74,47 @@ export function CompanyForm({ onClose, onSubmit, userRole }: CompanyFormProps) {
     industry: "",
     region: "",
     status: "Lead",
-    assignedRep: "",
-    reminderDate: "",
-    deadlineDate: "",
+    assigned_rep: "",
+    reminder_date: "",
+    deadline_date: "",
     tags: [],
     notes: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [representatives, setRepresentatives] = useState<Representative[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({})
+
+  // Fetch representatives from Supabase
+  useEffect(() => {
+    async function fetchRepresentatives() {
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("id, name, email, role")
+          .in("role", ["rep", "manager"])
+          .order("name")
+        
+        if (error) {
+          throw error
+        }
+        
+        setRepresentatives(data || [])
+      } catch (error: any) {
+        console.error("Error fetching representatives:", error.message)
+        toast({
+          title: "Error",
+          description: "Failed to load representatives. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    fetchRepresentatives()
+  }, [toast])
 
   const handleTagToggle = (tag: string) => {
     setFormData((prev) => ({
@@ -82,24 +123,109 @@ export function CompanyForm({ onClose, onSubmit, userRole }: CompanyFormProps) {
     }))
   }
 
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {}
+    
+    if (!formData.name.trim()) {
+      errors.name = "Company name is required"
+    }
+    
+    if (!formData.industry) {
+      errors.industry = "Industry is required"
+    }
+    
+    if (!formData.region) {
+      errors.region = "Region is required"
+    }
+    
+    if (!formData.assigned_rep) {
+      errors.assigned_rep = "Assigned representative is required"
+    }
+    
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!validateForm()) {
+      return
+    }
+    
     setIsSubmitting(true)
 
-    // Simulate API call
-    setTimeout(() => {
-      const newCompany = {
-        id: Date.now().toString(),
-        ...formData,
-        createdTime: new Date().toISOString().split("T")[0],
+    try {
+      console.log("Submitting company data:", {
+        name: formData.name,
+        industry: formData.industry,
+        region: formData.region,
+        status: formData.status,
+        assigned_rep: formData.assigned_rep,
+        reminder_date: formData.reminder_date || null,
+        deadline_date: formData.deadline_date || null,
+        notes: formData.notes || null,
+        tags: formData.tags,
+      });
+      
+      // Insert company data into the companies table
+      const { data: companyData, error: companyError } = await supabase
+        .from("companies")
+        .insert({
+          name: formData.name,
+          industry: formData.industry,
+          region: formData.region,
+          status: formData.status,
+          assigned_rep: formData.assigned_rep,
+          reminder_date: formData.reminder_date || null,
+          deadline_date: formData.deadline_date || null,
+          notes: formData.notes || null,
+          tags: formData.tags,
+        })
+        .select()
+
+      if (companyError) {
+        console.error("Error details:", companyError);
+        throw companyError;
       }
+      
+      console.log("Successfully created company:", companyData);
+
+      toast({
+        title: "Success",
+        description: "Company added successfully",
+      })
+
+      // Transform data to match the expected format in the parent component
+      const newCompany = {
+        id: companyData?.[0]?.id || '',
+        name: formData.name,
+        industry: formData.industry,
+        region: formData.region,
+        status: formData.status,
+        assignedRep: representatives.find(rep => rep.id === formData.assigned_rep)?.name || '',
+        reminderDate: formData.reminder_date,
+        deadlineDate: formData.deadline_date,
+        tags: formData.tags,
+        notes: formData.notes,
+        createdTime: new Date().toISOString().split('T')[0]
+      }
+
       onSubmit(newCompany)
       setIsSubmitting(false)
       onClose()
-    }, 1000)
+    } catch (error: any) {
+      console.error("Error adding company:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add company. Please try again.",
+        variant: "destructive",
+      })
+      setIsSubmitting(false)
+    }
   }
 
-  const isFormValid = formData.name && formData.industry && formData.region && formData.assignedRep
+  const isFormValid = formData.name && formData.industry && formData.region && formData.assigned_rep
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -127,19 +253,31 @@ export function CompanyForm({ onClose, onSubmit, userRole }: CompanyFormProps) {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                    if (formErrors.name) {
+                      setFormErrors(prev => ({ ...prev, name: "" }))
+                    }
+                  }}
                   placeholder="Enter company name"
+                  className={formErrors.name ? "border-red-500" : ""}
                   required
                 />
+                {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="industry">Industry *</Label>
                 <Select
                   value={formData.industry}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, industry: value }))}
+                  onValueChange={(value) => {
+                    setFormData((prev) => ({ ...prev, industry: value }))
+                    if (formErrors.industry) {
+                      setFormErrors(prev => ({ ...prev, industry: "" }))
+                    }
+                  }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={formErrors.industry ? "border-red-500" : ""}>
                     <SelectValue placeholder="Select industry" />
                   </SelectTrigger>
                   <SelectContent>
@@ -150,15 +288,21 @@ export function CompanyForm({ onClose, onSubmit, userRole }: CompanyFormProps) {
                     ))}
                   </SelectContent>
                 </Select>
+                {formErrors.industry && <p className="text-red-500 text-xs mt-1">{formErrors.industry}</p>}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="region">Region *</Label>
                 <Select
                   value={formData.region}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, region: value }))}
+                  onValueChange={(value) => {
+                    setFormData((prev) => ({ ...prev, region: value }))
+                    if (formErrors.region) {
+                      setFormErrors(prev => ({ ...prev, region: "" }))
+                    }
+                  }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={formErrors.region ? "border-red-500" : ""}>
                     <SelectValue placeholder="Select region" />
                   </SelectTrigger>
                   <SelectContent>
@@ -169,6 +313,7 @@ export function CompanyForm({ onClose, onSubmit, userRole }: CompanyFormProps) {
                     ))}
                   </SelectContent>
                 </Select>
+                {formErrors.region && <p className="text-red-500 text-xs mt-1">{formErrors.region}</p>}
               </div>
 
               <div className="space-y-2">
@@ -193,47 +338,60 @@ export function CompanyForm({ onClose, onSubmit, userRole }: CompanyFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="assignedRep">Assigned Representative *</Label>
-                <Select
-                  value={formData.assignedRep}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, assignedRep: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select representative" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {representatives.map((rep) => (
-                      <SelectItem key={rep} value={rep}>
-                        {rep}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="assigned_rep">Assigned Representative *</Label>
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <p className="text-sm">Loading representatives...</p>
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.assigned_rep}
+                    onValueChange={(value) => {
+                      setFormData((prev) => ({ ...prev, assigned_rep: value }))
+                      if (formErrors.assigned_rep) {
+                        setFormErrors(prev => ({ ...prev, assigned_rep: "" }))
+                      }
+                    }}
+                  >
+                    <SelectTrigger className={formErrors.assigned_rep ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select representative" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {representatives.map((rep) => (
+                        <SelectItem key={rep.id} value={rep.id}>
+                          {rep.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {formErrors.assigned_rep && <p className="text-red-500 text-xs mt-1">{formErrors.assigned_rep}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reminderDate">Reminder Date</Label>
+                <Label htmlFor="reminder_date">Reminder Date</Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    id="reminderDate"
+                    id="reminder_date"
                     type="date"
-                    value={formData.reminderDate}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, reminderDate: e.target.value }))}
+                    value={formData.reminder_date}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, reminder_date: e.target.value }))}
                     className="pl-10"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="deadlineDate">Deadline Date</Label>
+                <Label htmlFor="deadline_date">Deadline Date</Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    id="deadlineDate"
+                    id="deadline_date"
                     type="date"
-                    value={formData.deadlineDate}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, deadlineDate: e.target.value }))}
+                    value={formData.deadline_date}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, deadline_date: e.target.value }))}
                     className="pl-10"
                   />
                 </div>
@@ -242,20 +400,126 @@ export function CompanyForm({ onClose, onSubmit, userRole }: CompanyFormProps) {
 
             <div className="space-y-2">
               <Label>Tags</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {availableTags.map((tag) => (
-                  <div key={tag} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={tag}
-                      checked={formData.tags.includes(tag)}
-                      onCheckedChange={() => handleTagToggle(tag)}
-                    />
-                    <Label htmlFor={tag} className="text-sm">
-                      {tag}
-                    </Label>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium mb-2">Priority</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="High Priority"
+                        checked={formData.tags.includes("High Priority")}
+                        onCheckedChange={() => handleTagToggle("High Priority")}
+                      />
+                      <Label htmlFor="High Priority" className="text-sm">
+                        High Priority
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Medium Priority"
+                        checked={formData.tags.includes("Medium Priority")}
+                        onCheckedChange={() => handleTagToggle("Medium Priority")}
+                      />
+                      <Label htmlFor="Medium Priority" className="text-sm">
+                        Medium Priority
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Low Priority"
+                        checked={formData.tags.includes("Low Priority")}
+                        onCheckedChange={() => handleTagToggle("Low Priority")}
+                      />
+                      <Label htmlFor="Low Priority" className="text-sm">
+                        Low Priority
+                      </Label>
+                    </div>
                   </div>
-                ))}
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium mb-2">Company Type</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Large Company"
+                        checked={formData.tags.includes("Large Company")}
+                        onCheckedChange={() => handleTagToggle("Large Company")}
+                      />
+                      <Label htmlFor="Large Company" className="text-sm">
+                        Large Company
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="SME"
+                        checked={formData.tags.includes("SME")}
+                        onCheckedChange={() => handleTagToggle("SME")}
+                      />
+                      <Label htmlFor="SME" className="text-sm">
+                        SME
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Government"
+                        checked={formData.tags.includes("Government")}
+                        onCheckedChange={() => handleTagToggle("Government")}
+                      />
+                      <Label htmlFor="Government" className="text-sm">
+                        Government
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Private"
+                        checked={formData.tags.includes("Private")}
+                        onCheckedChange={() => handleTagToggle("Private")}
+                      />
+                      <Label htmlFor="Private" className="text-sm">
+                        Private
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium mb-2">Lead Status</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Urgent"
+                        checked={formData.tags.includes("Urgent")}
+                        onCheckedChange={() => handleTagToggle("Urgent")}
+                      />
+                      <Label htmlFor="Urgent" className="text-sm">
+                        Urgent
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Follow-up Required"
+                        checked={formData.tags.includes("Follow-up Required")}
+                        onCheckedChange={() => handleTagToggle("Follow-up Required")}
+                      />
+                      <Label htmlFor="Follow-up Required" className="text-sm">
+                        Follow-up Required
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Hot Lead"
+                        checked={formData.tags.includes("Hot Lead")}
+                        onCheckedChange={() => handleTagToggle("Hot Lead")}
+                      />
+                      <Label htmlFor="Hot Lead" className="text-sm">
+                        Hot Lead
+                      </Label>
+                    </div>
+                  </div>
+                </div>
               </div>
+              
               {formData.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {formData.tags.map((tag) => (
@@ -284,7 +548,14 @@ export function CompanyForm({ onClose, onSubmit, userRole }: CompanyFormProps) {
               Cancel
             </Button>
             <Button type="submit" disabled={!isFormValid || isSubmitting}>
-              {isSubmitting ? "Creating Company..." : "Create Company"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Company...
+                </>
+              ) : (
+                "Create Company"
+              )}
             </Button>
           </div>
         </form>

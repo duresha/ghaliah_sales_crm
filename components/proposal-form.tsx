@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -14,24 +14,27 @@ import { Badge } from "@/components/ui/badge"
 import { X, FileText, Globe, CheckCircle, AlertCircle, AlertTriangle } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 import { useToast } from "@/hooks/use-toast"
-import { ReactNode } from "react"
 import { TestStatus } from "@/components/ui/test-status"
 import { N8N_WEBHOOK_URL, TOAST_DURATION, TEST_CONFIG, FEATURES, IS_DEVELOPMENT } from "@/lib/config"
 
 interface ProposalFormProps {
   onClose: () => void
+  onSubmit: (proposal: any) => void
   userRole: "Admin" | "Manager" | "Rep"
 }
 
 interface ProposalData {
   company: string
-  serviceType: "Training" | "Pen Test" | ""
+  company_id: string | null
+  serviceType: string
   subService: string
   participants: number
-  duration: "3-day" | "5-day" | ""
+  duration: string
   addOns: string[]
   assignedRep: string
+  assigned_rep: string | null
   notes: string
+  totalPrice: number
 }
 
 interface SupabaseSubmitResult {
@@ -50,19 +53,18 @@ interface TestStep {
   message?: string;
 }
 
-const companies = [
-  "TechCorp Solutions",
-  "Global Manufacturing Inc",
-  "Financial Services Co",
-  "Healthcare Systems Ltd",
-  "StartupXYZ",
-  "Enterprise Co",
-]
+interface Company {
+  id: string;
+  name: string;
+}
 
-const representatives = ["Ahmed Al-Rashid", "Sarah Al-Mahmoud", "Mohammed Al-Zahra", "Fatima Al-Qasimi"]
+interface User {
+  id: string;
+  full_name: string;
+}
 
 const serviceTypes = {
-  Training: [
+  "Training": [
     "Security Awareness Training",
     "Compliance Training",
     "HIPAA Compliance Training",
@@ -76,6 +78,27 @@ const serviceTypes = {
     "Social Engineering Testing",
     "Wireless Network Testing",
   ],
+  "Compliance Audit": [
+    "PCI DSS Audit",
+    "GDPR Compliance Check",
+    "ISO 27001 Audit",
+    "HIPAA Compliance Audit",
+    "SOC 2 Readiness Assessment"
+  ],
+  "Cyber Risk Assessment": [
+    "Vulnerability Assessment",
+    "Risk Management Framework",
+    "Supply Chain Risk Assessment",
+    "Cloud Security Assessment",
+    "Critical Infrastructure Assessment"
+  ],
+  "Incident Response": [
+    "Incident Response Planning",
+    "Breach Investigation",
+    "Digital Forensics",
+    "Crisis Management",
+    "Post-Incident Review"
+  ]
 }
 
 const addOnOptions = [
@@ -87,37 +110,26 @@ const addOnOptions = [
   "On-site Training",
 ]
 
-// Map to store company names to IDs (would normally come from the database)
-const companyIdMap: { [key: string]: string } = {
-  "TechCorp Solutions": "3fa85f64-5717-4562-b3fc-2c963f66afa1",
-  "Global Manufacturing Inc": "3fa85f64-5717-4562-b3fc-2c963f66afa2",
-  "Financial Services Co": "3fa85f64-5717-4562-b3fc-2c963f66afa3",
-  "Healthcare Systems Ltd": "3fa85f64-5717-4562-b3fc-2c963f66afa4",
-  "StartupXYZ": "3fa85f64-5717-4562-b3fc-2c963f66afa5",
-  "Enterprise Co": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-}
-
-// Map to store representative names to IDs (would normally come from the database)
-const representativeIdMap: { [key: string]: string } = {
-  "Ahmed Al-Rashid": "r1",
-  "Sarah Al-Mahmoud": "r2",
-  "Mohammed Al-Zahra": "r3",
-  "Fatima Al-Qasimi": "r4",
-}
-
-export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
+export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps) {
   const [formData, setFormData] = useState<ProposalData>({
     company: "",
+    company_id: null,
     serviceType: "",
     subService: "",
     participants: 0,
     duration: "",
     addOns: [],
     assignedRep: "",
+    assigned_rep: null,
     notes: "",
+    totalPrice: 0
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [step, setStep] = useState(1)
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [representatives, setRepresentatives] = useState<User[]>([])
+  const [manualPrice, setManualPrice] = useState<number>(0)
+  const [priceChanged, setPriceChanged] = useState(false)
   
   // Extended test steps with idle state
   const initialTestSteps = [
@@ -132,33 +144,144 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
    
   // Create simple notification helpers that avoid ReactNode type issues
   const notifySuccess = (title: string, description: string) => {
+    console.log("Showing success toast:", title, description);
     toast({
       title,
       description,
       variant: "default",
-      duration: 5000,
+      duration: 20000, // 20 seconds
     })
   }
   
   const notifyError = (title: string, description: string) => {
+    console.log("Showing error toast:", title, description);
     toast({
       title,
       description,
       variant: "destructive",
-      duration: 7000,
+      duration: 20000, // 20 seconds
     })
   }
   
   const notifyInfo = (title: string, description: string) => {
+    console.log("Showing info toast:", title, description);
     toast({
       title,
       description,
       variant: "default", 
-      duration: 5000,
+      duration: 20000, // 20 seconds
     })
   }
 
-  const [testActive, setTestActive] = useState(false) 
+  const [testActive, setTestActive] = useState(false)
+  const [autoSubmitPrevented, setAutoSubmitPrevented] = useState(false)
+  
+  // Fetch companies from Supabase
+  useEffect(() => {
+    async function fetchCompanies() {
+      try {
+        setCompanies([]) // Reset before fetching
+
+        const { data, error } = await supabase
+          .from("companies")
+          .select("id, name")
+          .order("name")
+        
+        if (error) {
+          console.error("Error fetching companies:", error)
+          // Use fallback companies on error
+          setCompanies([
+            { id: "c1", name: "TechCorp Solutions" },
+            { id: "c2", name: "Global Manufacturing Inc" },
+            { id: "c3", name: "Financial Services Co" },
+            { id: "c4", name: "Healthcare Systems Ltd" },
+            { id: "c5", name: "StartupXYZ" },
+            { id: "c6", name: "Enterprise Co" }
+          ])
+          return
+        }
+        
+        // If no companies found, use fallbacks
+        if (!data || data.length === 0) {
+          setCompanies([
+            { id: "c1", name: "TechCorp Solutions" },
+            { id: "c2", name: "Global Manufacturing Inc" },
+            { id: "c3", name: "Financial Services Co" },
+            { id: "c4", name: "Healthcare Systems Ltd" },
+            { id: "c5", name: "StartupXYZ" },
+            { id: "c6", name: "Enterprise Co" }
+          ])
+          return
+        }
+        
+        setCompanies(data)
+      } catch (err) {
+        console.error("Failed to fetch companies:", err)
+        // Use fallback companies on exception
+        setCompanies([
+          { id: "c1", name: "TechCorp Solutions" },
+          { id: "c2", name: "Global Manufacturing Inc" },
+          { id: "c3", name: "Financial Services Co" },
+          { id: "c4", name: "Healthcare Systems Ltd" },
+          { id: "c5", name: "StartupXYZ" },
+          { id: "c6", name: "Enterprise Co" }
+        ])
+      }
+    }
+    
+    fetchCompanies()
+  }, [])
+  
+  // Fetch representatives from Supabase
+  useEffect(() => {
+    async function fetchRepresentatives() {
+      try {
+        setRepresentatives([]) // Reset before fetching
+
+        const { data, error } = await supabase
+          .from("users")
+          .select("id, full_name:name, email, role")
+          .in("role", ["rep", "manager"])
+          .order("name")
+        
+        if (error) {
+          console.error("Error fetching representatives:", error)
+          // Use fallback representatives on error
+          setRepresentatives([
+            { id: "r1", full_name: "Ahmed Al-Rashid" },
+            { id: "r2", full_name: "Sarah Al-Mahmoud" },
+            { id: "r3", full_name: "Mohammed Al-Zahra" },
+            { id: "r4", full_name: "Fatima Al-Qasimi" }
+          ])
+          return
+        }
+        
+        // If no representatives found, use fallbacks
+        if (!data || data.length === 0) {
+          setRepresentatives([
+            { id: "r1", full_name: "Ahmed Al-Rashid" },
+            { id: "r2", full_name: "Sarah Al-Mahmoud" },
+            { id: "r3", full_name: "Mohammed Al-Zahra" },
+            { id: "r4", full_name: "Fatima Al-Qasimi" }
+          ])
+          return
+        }
+        
+        setRepresentatives(data)
+      } catch (err) {
+        console.error("Failed to fetch representatives:", err)
+        // Use fallback representatives on exception
+        setRepresentatives([
+          { id: "r1", full_name: "Ahmed Al-Rashid" },
+          { id: "r2", full_name: "Sarah Al-Mahmoud" },
+          { id: "r3", full_name: "Mohammed Al-Zahra" },
+          { id: "r4", full_name: "Fatima Al-Qasimi" }
+        ])
+      }
+    }
+    
+    fetchRepresentatives()
+  }, [])
 
   // Function to track test progress with nice notifications
   const startTest = () => {
@@ -170,7 +293,6 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
     ]
     setTestSteps(steps)
     
-    notifyInfo("Testing Process", "Starting test sequence...")
     return steps
   }
   
@@ -181,13 +303,12 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
       )
     )
     
-    // Only show toast notifications for important state changes
+    // Only show toast notifications for errors
+    const stepLabel = initialTestSteps[index].label
     if (status === "error") {
-      notifyError(`${testSteps[index].label} Failed`, message || "An error occurred")
-    } else if (status === "success" && index === testSteps.length - 1) {
-      // Only show success when the final step completes
-      notifySuccess("Test Completed", "All test steps completed successfully")
+      notifyError(`${stepLabel} Failed`, message || "An error occurred")
     }
+    // Remove the success toast for completed process - we'll handle this in the handleSubmit function
   }
   
   const resetTest = () => {
@@ -223,37 +344,7 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
     setupAuth()
   }, [])
 
-  // Check if the proposals table exists when component mounts
-  useEffect(() => {
-    const checkTable = async () => {
-      try {
-        console.log("Checking database connection...")
-        
-        // Simple check just to verify database connection
-        const { error } = await supabase
-          .from('proposals')
-          .select('id')
-          .limit(1)
-        
-        if (error) {
-          console.error("Error connecting to proposals table:", error)
-          
-          notifyError(
-            "Database Connection Issue",
-            "Cannot connect to the proposals database. Please contact support."
-          )
-        } else {
-          console.log("Successfully connected to proposals table")
-        }
-      } catch (error: any) {
-        console.error("Failed to check database connection:", error?.message || error)
-      }
-    }
-    
-    checkTable()
-  }, [])
-
-  const handleServiceTypeChange = (value: "Training" | "Pen Test") => {
+  const handleServiceTypeChange = (value: string) => {
     setFormData((prev) => ({
       ...prev,
       serviceType: value,
@@ -276,6 +367,12 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
       basePrice += formData.participants * 500
     } else if (formData.serviceType === "Pen Test") {
       basePrice = formData.duration === "5-day" ? 60000 : 40000
+    } else if (formData.serviceType === "Compliance Audit") {
+      basePrice = 45000
+    } else if (formData.serviceType === "Cyber Risk Assessment") {
+      basePrice = 55000
+    } else if (formData.serviceType === "Incident Response") {
+      basePrice = 70000
     }
 
     // Add-on pricing
@@ -293,15 +390,6 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
     return basePrice + addOnTotal
   }
 
-  // Function to generate a random UUID (for testing purposes)
-  const generateUuid = () => {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0,
-          v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-  };
-
   // Function to generate unique proposal code
   const generateProposalCode = () => {
     const year = new Date().getFullYear();
@@ -313,12 +401,10 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
   const submitToSupabase = async (): Promise<SupabaseSubmitResult> => {
     try {
       const proposalCode = generateProposalCode()
-      const estimatedPrice = calculateEstimatedPrice()
+      const totalPrice = priceChanged ? manualPrice : calculateEstimatedPrice()
       
-      // Get company ID from mapping - but make it null for development since companies don't exist yet
-      // Comment out to use sample UUIDs when you add actual company records
-      // const companyId = companyIdMap[formData.company]; 
-      const companyId = null // Temporarily use null to avoid foreign key constraint
+      // Get company ID from mapping
+      const companyId = formData.company_id
       
       console.log("Using company_id:", companyId, "for company:", formData.company)
       
@@ -330,14 +416,13 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
         sub_service: formData.subService || null,
         duration: formData.duration,
         status: "Draft",
-        total_price: estimatedPrice
+        total_price: totalPrice,
+        notes: formData.notes,
+        assigned_rep: formData.assigned_rep,
+        participants: formData.participants || 0, // Always include participants (0 if not set)
+        add_ons: formData.addOns || [] // Now that we have the column, include add_ons
       }
       
-      if (formData.participants > 0) {
-        // Only add participants if it's a positive number
-        (proposalData as any).participants = formData.participants
-      }
-
       console.log("Submitting proposal data:", proposalData)
 
       // Update test status if testing
@@ -374,6 +459,24 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
         updateTestStep(0, "success")
       }
       
+      const newProposal = {
+        id: data?.[0]?.id || null,
+        proposalId: proposalCode,
+        company: formData.company,
+        serviceType: formData.serviceType,
+        subService: formData.subService,
+        participants: formData.participants,
+        duration: formData.duration,
+        addOns: formData.addOns,
+        status: "Draft",
+        assignedRep: formData.assignedRep,
+        createdOn: new Date().toISOString().split('T')[0],
+        totalPrice: totalPrice
+      }
+      
+      // Call onSubmit to update the parent component's state
+      onSubmit(newProposal)
+      
       return {
         success: true,
         proposalId: data?.[0]?.id || null,
@@ -407,7 +510,7 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
       // Use the webhook URL from the config
       const webhookUrl = N8N_WEBHOOK_URL;
       
-      // Prepare payload for n8n
+      // Prepare payload for n8n - include addOns here even if not stored in DB
       const payload = {
         proposalId: proposalCode,
         company: formData.company,
@@ -415,8 +518,8 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
         subService: formData.subService,
         participants: formData.participants,
         duration: formData.duration,
-        addOns: formData.addOns,
-        estimatedPrice: calculateEstimatedPrice(),
+        addOns: formData.addOns, // Still include addOns in webhook payload
+        estimatedPrice: priceChanged ? manualPrice : calculateEstimatedPrice(),
         assignedRep: formData.assignedRep,
         notes: formData.notes,
         createdAt: new Date().toISOString()
@@ -537,21 +640,17 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
           "The proposal was saved successfully, but the automation workflow could not be triggered. Support has been notified."
         )
       } else {
-        // Show success message
-        const message = n8nResult.simulated 
-          ? `Proposal ${proposalCode} created. Note: In development mode, webhook success is simulated.` 
-          : `Proposal ${proposalCode} has been created and sent for automation.`;
-          
+        // Show simplified success message
         notifySuccess(
-          "Proposal Created Successfully",
-          message
+          "Success!",
+          `Proposal ${proposalCode} submitted, webhook and automation triggered!`
         )
       }
       
       // Make sure to reset test state when closing the form
       if (onClose) {
         // Allow time for notifications to be seen
-    setTimeout(() => {
+        setTimeout(() => {
           if (FEATURES.ENABLE_TESTING) {
             resetTest()
           }
@@ -573,15 +672,36 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
   const isStepValid = (stepNumber: number) => {
     switch (stepNumber) {
       case 1:
-        return formData.company && formData.serviceType && formData.subService
+        return Boolean(formData.company && formData.serviceType && formData.subService)
       case 2:
-        return formData.duration && (formData.serviceType !== "Training" || formData.participants > 0)
+        if (formData.serviceType === "Training") {
+          // For training, participants is required and must be > 0
+          return Boolean(formData.duration && formData.participants > 0)
+        } else {
+          // For other services, just need duration
+          return Boolean(formData.duration)
+        }
       case 3:
-        return formData.assignedRep
+        return Boolean(formData.assignedRep)
       default:
         return true
     }
   }
+  
+  // Initial calculation of estimated price
+  useEffect(() => {
+    if (!priceChanged) {
+      setManualPrice(calculateEstimatedPrice())
+    }
+  }, [formData.serviceType, formData.duration, formData.participants, formData.addOns])
+
+  // Check for automatic submission prevention
+  useEffect(() => {
+    // This specifically addresses the issue where the form would auto-submit on step 4
+    if (step === 4 && !autoSubmitPrevented) {
+      setAutoSubmitPrevented(true)
+    }
+  }, [step, autoSubmitPrevented]);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-auto p-4">
@@ -620,7 +740,12 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
         </CardHeader>
 
         <CardContent>
-        <form onSubmit={handleSubmit}>
+          <form onSubmit={(e) => {
+            // Prevent default form submission behavior that might be causing auto-submission
+            e.preventDefault();
+            // Only allow submission through the explicit button click
+            // The actual submission is handled in the button onClick
+          }}>
             {step === 1 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Service Details</h3>
@@ -629,15 +754,22 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
                   <Label htmlFor="company">Company *</Label>
                   <Select
                     value={formData.company}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, company: value }))}
+                    onValueChange={(value) => {
+                      const selectedCompany = companies.find(c => c.name === value)
+                      setFormData((prev) => ({ 
+                        ...prev, 
+                        company: value,
+                        company_id: selectedCompany?.id || null
+                      }))
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select company" />
                     </SelectTrigger>
                     <SelectContent>
                       {companies.map((company) => (
-                        <SelectItem key={company} value={company}>
-                          {company}
+                        <SelectItem key={company.id} value={company.name}>
+                          {company.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -653,6 +785,9 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
                     <SelectContent>
                       <SelectItem value="Training">Training</SelectItem>
                       <SelectItem value="Pen Test">Penetration Testing</SelectItem>
+                      <SelectItem value="Compliance Audit">Compliance Audit</SelectItem>
+                      <SelectItem value="Cyber Risk Assessment">Cyber Risk Assessment</SelectItem>
+                      <SelectItem value="Incident Response">Incident Response</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -668,7 +803,7 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
                         <SelectValue placeholder="Select sub-service" />
                       </SelectTrigger>
                       <SelectContent>
-                        {serviceTypes[formData.serviceType as keyof typeof serviceTypes].map((service) => (
+                        {serviceTypes[formData.serviceType as keyof typeof serviceTypes]?.map((service) => (
                           <SelectItem key={service} value={service}>
                             {service}
                           </SelectItem>
@@ -688,7 +823,7 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
                   <Label htmlFor="duration">Duration *</Label>
                   <Select
                     value={formData.duration}
-                    onValueChange={(value: "3-day" | "5-day") => setFormData((prev) => ({ ...prev, duration: value }))}
+                    onValueChange={(value: string) => setFormData((prev) => ({ ...prev, duration: value }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select duration" />
@@ -696,13 +831,17 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
                     <SelectContent>
                       <SelectItem value="3-day">3 Days</SelectItem>
                       <SelectItem value="5-day">5 Days</SelectItem>
+                      <SelectItem value="7-day">7 Days</SelectItem>
+                      <SelectItem value="10-day">10 Days</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {formData.serviceType === "Training" && (
                   <div className="space-y-2">
-                    <Label htmlFor="participants">Number of Participants *</Label>
+                    <Label htmlFor="participants">
+                      Number of Participants *
+                    </Label>
                     <Input
                       id="participants"
                       type="number"
@@ -753,15 +892,22 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
                   <Label htmlFor="assignedRep">Assigned Representative *</Label>
                   <Select
                     value={formData.assignedRep}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, assignedRep: value }))}
+                    onValueChange={(value) => {
+                      const selectedRep = representatives.find(r => r.full_name === value)
+                      setFormData((prev) => ({ 
+                        ...prev, 
+                        assignedRep: value,
+                        assigned_rep: selectedRep?.id || null
+                      }))
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select representative" />
                     </SelectTrigger>
                     <SelectContent>
                       {representatives.map((rep) => (
-                        <SelectItem key={rep} value={rep}>
-                          {rep}
+                        <SelectItem key={rep.id} value={rep.full_name}>
+                          {rep.full_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -827,13 +973,30 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
                       </div>
                     </div>
                   )}
+                  
+                  {formData.notes && (
+                    <div>
+                      <span className="font-medium text-sm">Notes:</span>
+                      <p className="text-sm mt-1">{formData.notes}</p>
+                    </div>
+                  )}
 
                   <div className="border-t pt-3">
                     <div className="flex justify-between items-center">
                       <span className="font-medium">Estimated Price:</span>
-                      <span className="text-lg font-bold text-green-600">
-                        ${calculateEstimatedPrice().toLocaleString()}
-                      </span>
+                      <div className="text-lg font-bold text-green-600 flex items-center gap-2">
+                        <span>$</span>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={manualPrice}
+                          onChange={(e) => {
+                            setPriceChanged(true)
+                            setManualPrice(Number.parseInt(e.target.value) || 0)
+                          }}
+                          className="w-28 h-7 text-green-600 font-bold focus:border-green-600 p-0 text-right"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -848,8 +1011,8 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
                     <li>Generate bilingual proposals (English & Arabic)</li>
                     <li>Create Google Drive folder for the company</li>
                     <li>Upload proposal documents to Drive</li>
-                    <li>Set reminder date (5 days from now)</li>
-                    <li>Update Airtable with all links and data</li>
+                    <li>Set reminder date (5, 10 and 15 days from now)</li>
+                    <li>Update Database with all links and data</li>
                   </ul>
                 </div>
               </div>
@@ -872,17 +1035,28 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
               
               <div className="flex-1 flex justify-end space-x-4">
                 {step === 4 ? (
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button 
+                    type="button" 
+                    disabled={isSubmitting} 
+                    onClick={(e) => {
+                      // Explicit handling of the button click
+                      handleSubmit(e);
+                    }}
+                  >
                     {isSubmitting ? "Submitting..." : "Submit Proposal"}
-                </Button>
-              ) : (
-                  <Button type="button" onClick={() => setStep(step + 1)}>
+                  </Button>
+                ) : (
+                  <Button 
+                    type="button" 
+                    onClick={() => setStep(step + 1)}
+                    disabled={!isStepValid(step)}
+                  >
                     Next
-                </Button>
-              )}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
         </CardContent>
       </Card>
     </div>
