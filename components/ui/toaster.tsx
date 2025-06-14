@@ -14,13 +14,13 @@ export function Toaster() {
   const { toasts } = useToast()
 
   return (
-    <ToastProvider swipeDirection="right" duration={20000}>
+    <ToastProvider swipeDirection="right" duration={15000}>
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
           <Toast 
             key={id} 
             {...props} 
-            duration={20000} 
+            duration={15000} 
             className="bg-white border border-gray-200 shadow-lg mb-4"
           >
             <div className="grid gap-1">

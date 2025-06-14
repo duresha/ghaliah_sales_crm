@@ -9,9 +9,9 @@ export const N8N_WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL ||
 
 // Default timeout settings for various operations (in milliseconds)
 export const TOAST_DURATION = {
-  DEFAULT: 20000, // Increased to 20 seconds
-  ERROR: 20000,   // Increased to 20 seconds
-  SUCCESS: 20000, // Increased to 20 seconds
+  DEFAULT: 15000, // Changed to 15 seconds
+  ERROR: 15000,   // Changed to 15 seconds
+  SUCCESS: 15000, // Changed to 15 seconds
 }
 
 // Test configuration
@@ -21,7 +21,7 @@ export const TEST_CONFIG = {
   // How long to leave the final test result visible
   RESULT_DISPLAY: 3000,
   // Toast notification duration for test events
-  TOAST_DURATION: 20000 // Increased to 20 seconds
+  TOAST_DURATION: 15000 // Changed to 15 seconds
 }
 
 // Feature flags

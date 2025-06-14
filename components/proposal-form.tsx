@@ -149,7 +149,7 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
       title,
       description,
       variant: "default",
-      duration: 20000, // 20 seconds
+      duration: 15000, // 15 seconds
     })
   }
   
@@ -159,7 +159,7 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
       title,
       description,
       variant: "destructive",
-      duration: 20000, // 20 seconds
+      duration: 15000, // 15 seconds
     })
   }
   
@@ -169,7 +169,7 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
       title,
       description,
       variant: "default", 
-      duration: 20000, // 20 seconds
+      duration: 15000, // 15 seconds
     })
   }
 

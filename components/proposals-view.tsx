@@ -7,7 +7,16 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { FileText, Search, DollarSign, Users, Plus, Eye, Loader2 } from "lucide-react"
+import { FileText } from "lucide-react"
+import { Search } from "lucide-react"
+import { DollarSign } from "lucide-react"
+import { Users } from "lucide-react"
+import { Plus } from "lucide-react"
+import { Eye } from "lucide-react"
+import { Loader2 } from "lucide-react"
+import { Languages } from "lucide-react"
+import { Trash2 } from "lucide-react"
+import { X } from "lucide-react"
 import { ProposalForm } from "@/components/proposal-form"
 import { supabase } from "@/lib/supabaseClient"
 import { useToast } from "@/hooks/use-toast"
@@ -45,6 +54,8 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
   const [viewMode, setViewMode] = useState<"table" | "kanban">("kanban")
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
   const [showProposalForm, setShowProposalForm] = useState(false)
+  const [deleteProposal, setDeleteProposal] = useState<Proposal | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const { toast } = useToast()
 
   // Fetch proposals from Supabase - separate function similar to companies-view
@@ -139,11 +150,11 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
           createdOn: proposal.created_at ? new Date(proposal.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           totalPrice: proposal.total_price || 0,
           notes: proposal.notes,
-          // Handle drive folder fields safely
-          drive_folder_en: undefined,
-          drive_folder_ar: undefined,
-          proposalLinkEN: undefined,
-          proposalLinkAR: undefined
+          // Include the drive folder links
+          drive_folder_en: proposal.drive_folder_en || undefined,
+          drive_folder_ar: proposal.drive_folder_ar || undefined,
+          proposalLinkEN: proposal.drive_folder_en || undefined,
+          proposalLinkAR: proposal.drive_folder_ar || undefined
         };
       })
 
@@ -196,6 +207,51 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
   }
 
   const statusColumns = ["Draft", "Sent", "Accepted"]
+
+  const handleDeleteProposal = async () => {
+    if (!deleteProposal) return
+
+    setIsDeleting(true)
+    try {
+      // Delete the record from Supabase
+      const { error } = await supabase
+        .from('proposals')
+        .delete()
+        .eq('id', deleteProposal.id)
+
+      if (error) {
+        console.error("Error deleting proposal:", error)
+        toast({
+          title: "Error",
+          description: "Failed to delete the proposal: " + error.message,
+          variant: "destructive",
+          duration: 5000,
+        })
+      } else {
+        // Show success toast
+        toast({
+          title: "Success",
+          description: `Proposal ${deleteProposal.proposalId} has been deleted.`,
+          variant: "default",
+          duration: 3000,
+        })
+        
+        // Remove from local state
+        setProposals(proposals.filter(p => p.id !== deleteProposal.id))
+      }
+    } catch (error: any) {
+      console.error("Error in handleDeleteProposal:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred: " + (error.message || "Please try again"),
+        variant: "destructive",
+        duration: 5000,
+      })
+    } finally {
+      setIsDeleting(false)
+      setDeleteProposal(null) // Close dialog
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -256,6 +312,23 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
           <Loader2 className="h-8 w-8 animate-spin mr-2" />
           <p>Loading proposals...</p>
         </div>
+      ) : proposals.length === 0 ? (
+        <Card className="p-12">
+          <div className="text-center">
+            <div className="relative mx-auto w-12 h-12 mb-4">
+              <FileText className="h-12 w-12 text-gray-300" />
+              <div className="absolute top-0 right-0 w-4 h-4 bg-red-100 rounded-full flex items-center justify-center">
+                <X className="h-3 w-3 text-red-500" />
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold mb-1">No Proposals Available</h3>
+            <p className="text-gray-500 mb-4">You haven't created any proposals yet.</p>
+            <Button onClick={() => setShowProposalForm(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Your First Proposal
+            </Button>
+          </div>
+        </Card>
       ) : viewMode === "table" ? (
         <Card>
           <Table>
@@ -314,11 +387,29 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
                         <Button variant="ghost" size="sm" onClick={() => setSelectedProposal(proposal)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {proposal.proposalLinkEN && (
-                          <Button variant="ghost" size="sm" asChild>
-                            <a href={proposal.proposalLinkEN} target="_blank" rel="noopener noreferrer">
+                        {proposal.drive_folder_en && (
+                          <Button variant="ghost" size="sm" asChild title="Open English Proposal">
+                            <a href={proposal.drive_folder_en} target="_blank" rel="noopener noreferrer">
                               <FileText className="h-4 w-4" />
                             </a>
+                          </Button>
+                        )}
+                        {proposal.drive_folder_ar && (
+                          <Button variant="ghost" size="sm" asChild title="Open Arabic Proposal">
+                            <a href={proposal.drive_folder_ar} target="_blank" rel="noopener noreferrer">
+                              <Languages className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        )}
+                        {(userRole === "Admin" || userRole === "Manager") && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setDeleteProposal(proposal)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            title="Delete Proposal"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
@@ -370,11 +461,32 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
                               {proposal.totalPrice.toLocaleString()}
                             </div>
                             <div className="flex gap-1">
-                              {proposal.proposalLinkEN && (
-                                <Button variant="ghost" size="sm" asChild>
-                                  <a href={proposal.proposalLinkEN} target="_blank" rel="noopener noreferrer">
+                              {proposal.drive_folder_en && (
+                                <Button variant="ghost" size="sm" asChild title="Open English Proposal">
+                                  <a href={proposal.drive_folder_en} target="_blank" rel="noopener noreferrer">
                                     <FileText className="h-3 w-3" />
                                   </a>
+                                </Button>
+                              )}
+                              {proposal.drive_folder_ar && (
+                                <Button variant="ghost" size="sm" asChild title="Open Arabic Proposal">
+                                  <a href={proposal.drive_folder_ar} target="_blank" rel="noopener noreferrer">
+                                    <Languages className="h-3 w-3" />
+                                  </a>
+                                </Button>
+                              )}
+                              {(userRole === "Admin" || userRole === "Manager") && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevent card click
+                                    setDeleteProposal(proposal);
+                                  }}
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1"
+                                  title="Delete Proposal"
+                                >
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               )}
                             </div>
@@ -482,20 +594,33 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {selectedProposal.proposalLinkEN && (
+                {selectedProposal.drive_folder_en && (
                   <Button variant="outline" size="sm" asChild>
-                    <a href={selectedProposal.proposalLinkEN} target="_blank" rel="noopener noreferrer">
+                    <a href={selectedProposal.drive_folder_en} target="_blank" rel="noopener noreferrer">
                       <FileText className="mr-2 h-4 w-4" />
-                      Proposal (EN)
+                      English Proposal
                     </a>
                   </Button>
                 )}
-                {selectedProposal.proposalLinkAR && (
+                {selectedProposal.drive_folder_ar && (
                   <Button variant="outline" size="sm" asChild>
-                    <a href={selectedProposal.proposalLinkAR} target="_blank" rel="noopener noreferrer">
-                      <FileText className="mr-2 h-4 w-4" />
-                      Proposal (AR)
+                    <a href={selectedProposal.drive_folder_ar} target="_blank" rel="noopener noreferrer">
+                      <Languages className="mr-2 h-4 w-4" />
+                      Arabic Proposal
                     </a>
+                  </Button>
+                )}
+                {(userRole === "Admin" || userRole === "Manager") && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => {
+                      setSelectedProposal(null); // Close detail view
+                      setDeleteProposal(selectedProposal); // Open delete confirmation
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Proposal
                   </Button>
                 )}
               </div>
@@ -505,6 +630,48 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
       )}
       {showProposalForm && (
         <ProposalForm onClose={() => setShowProposalForm(false)} onSubmit={handleAddProposal} userRole={userRole} />
+      )}
+      {deleteProposal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Confirm Deletion</CardTitle>
+              <CardDescription>
+                Are you sure you want to delete proposal {deleteProposal.proposalId}? This action cannot be undone.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p><span className="font-medium">Company:</span> {deleteProposal.company}</p>
+                <p><span className="font-medium">Service:</span> {deleteProposal.serviceType}</p>
+                <p><span className="font-medium">Created on:</span> {deleteProposal.createdOn}</p>
+              </div>
+            </CardContent>
+            <div className="flex justify-end gap-2 p-6 pt-0">
+              <Button 
+                variant="outline" 
+                onClick={() => setDeleteProposal(null)} 
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleDeleteProposal}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
+              </Button>
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   )
