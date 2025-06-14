@@ -5,7 +5,7 @@
 export const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 
 export const N8N_WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 
-  "https://madvaki.app.n8n.cloud/webhook-test/submit-proposal";
+  "https://madvaki.app.n8n.cloud/webhook/submit-proposal";
 
 // Default timeout settings for various operations (in milliseconds)
 export const TOAST_DURATION = {

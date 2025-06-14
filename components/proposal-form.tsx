@@ -551,7 +551,7 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
       // Make sure to reset test state when closing the form
       if (onClose) {
         // Allow time for notifications to be seen
-        setTimeout(() => {
+    setTimeout(() => {
           if (FEATURES.ENABLE_TESTING) {
             resetTest()
           }
@@ -586,18 +586,41 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-auto p-4">
       <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div>
-            <CardTitle className="text-2xl">Create Proposal</CardTitle>
-            <CardDescription>Fill in the details to generate a proposal</CardDescription>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Create New Proposal
+              </CardTitle>
+              <CardDescription>Generate a bilingual proposal for your client</CardDescription>
+            </div>
+            <Button variant="ghost" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-          <Button variant="ghost" className="rounded-full" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+
+          {/* Progress indicator */}
+          <div className="flex items-center gap-2 mt-4">
+            {[1, 2, 3, 4].map((stepNumber) => (
+              <div key={stepNumber} className="flex items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    step >= stepNumber ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
+                  }`}
+                >
+                  {stepNumber}
+                </div>
+                {stepNumber < 4 && (
+                  <div className={`w-8 h-1 mx-2 ${step > stepNumber ? "bg-blue-600" : "bg-gray-200"}`} />
+                )}
+              </div>
+            ))}
+          </div>
         </CardHeader>
-        
+
         <CardContent>
-          <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
             {step === 1 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Service Details</h3>
@@ -851,15 +874,15 @@ export function ProposalForm({ onClose, userRole }: ProposalFormProps) {
                 {step === 4 ? (
                   <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? "Submitting..." : "Submit Proposal"}
-                  </Button>
-                ) : (
+                </Button>
+              ) : (
                   <Button type="button" onClick={() => setStep(step + 1)}>
                     Next
-                  </Button>
-                )}
-              </div>
+                </Button>
+              )}
             </div>
-          </form>
+          </div>
+        </form>
         </CardContent>
       </Card>
     </div>

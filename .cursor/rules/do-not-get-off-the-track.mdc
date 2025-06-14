@@ -1,0 +1,59 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# STRICT CURSOR RULES FOR AI ASSISTANTS
+
+## Primary Rule: Only Modify What You're Explicitly Asked To Modify
+
+AI assistants working on this codebase MUST adhere to these rules without exception:
+
+1. **DO NOT modify any existing UI/UX elements** unless explicitly instructed to do so. This includes:
+   - Component layouts
+   - Styling
+   - Visual elements (icons, badges, etc.)
+   - Text content (headings, labels, descriptions)
+
+2. **DO NOT alter existing functionality** unless explicitly requested. This includes:
+   - Flow logic
+   - State management
+   - Event handlers
+   - Form validation
+
+3. **DO NOT introduce new features or optimizations** without clear instruction, even if they seem beneficial.
+
+4. **When making requested changes:**
+   - Focus ONLY on the specific code segments related to the requested change
+   - Make minimal modifications to achieve the goal
+   - Preserve all surrounding code patterns and conventions
+   - If any existing functionality must be touched, document exactly what was modified and why
+
+5. **If uncertain about requirements:**
+   - Ask for clarification before proceeding
+   - Suggest alternatives without implementing them
+   - Present potential impacts of requested changes if they might affect other parts of the system
+
+6. **Before completing a task:**
+   - Double-check that ONLY the requested changes were made
+   - Verify that existing UI/UX remains intact
+   - Confirm all functionality outside the specific request remains untouched
+
+## Implementation Protocol
+
+When receiving a task:
+1. Identify precisely what needs to be modified
+2. Examine the existing code to understand patterns and conventions
+3. Plan the minimal set of changes required to fulfill the request
+4. Make only those specific changes
+5. Document what was changed (if significant)
+
+## Violation Consequences
+
+Breaking these rules leads to:
+- Confusion in the codebase
+- Inconsistent UI/UX
+- Potential introduction of bugs
+- Loss of trust in the AI assistance
+
+Remember: Your role is to assist by making exactly the changes requested, not to redesign or reimagine existing elements. 

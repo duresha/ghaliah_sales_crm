@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -20,35 +19,13 @@ interface User {
 }
 
 export default function Dashboard() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState("overview")
-  const router = useRouter()
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/")
-    }
-  }, [status, router])
-
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!session?.user) {
-    return null
-  }
 
   const user: User = {
-    email: session.user.email || "",
-    name: session.user.name || "",
-    role: (session.user as any).role || "Rep",
+    email: session?.user?.email || "",
+    name: session?.user?.name || "",
+    role: (session?.user as any)?.role || "Rep",
   }
 
   const stats = [
