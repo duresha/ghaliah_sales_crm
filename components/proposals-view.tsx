@@ -20,6 +20,9 @@ import { X } from "lucide-react"
 import { ProposalForm } from "@/components/proposal-form"
 import { supabase } from "@/lib/supabaseClient"
 import { useToast } from "@/hooks/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 interface Proposal {
   id: string
@@ -32,6 +35,7 @@ interface Proposal {
   addOns: string[]
   status: "Draft" | "Sent" | "Accepted"
   assignedRep: string
+  assigned_rep?: string | null
   createdOn: string
   proposalLinkEN?: string
   proposalLinkAR?: string
@@ -56,7 +60,21 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
   const [showProposalForm, setShowProposalForm] = useState(false)
   const [deleteProposal, setDeleteProposal] = useState<Proposal | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editProposal, setEditProposal] = useState<Proposal | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
+  
+  // Define representatives and add-on options for edit form
+  const [representatives, setRepresentatives] = useState<{id: string, full_name: string}[]>([])
+  const addOnOptions = [
+    "Coffee Breaks",
+    "Lunch",
+    "Workshop Materials",
+    "Certificates",
+    "Follow-up Sessions",
+    "Transportation"
+  ];
 
   // Fetch proposals from Supabase - separate function similar to companies-view
   const fetchProposals = async () => {
@@ -147,6 +165,7 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
           addOns: proposal.add_ons || [],
           status: (proposal.status as "Draft" | "Sent" | "Accepted") || "Draft",
           assignedRep: repsMap[proposal.assigned_rep] || "Unassigned",
+          assigned_rep: proposal.assigned_rep,
           createdOn: proposal.created_at ? new Date(proposal.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           totalPrice: proposal.total_price || 0,
           notes: proposal.notes,
@@ -173,9 +192,55 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
     }
   }
 
+  // Fetch representatives for the edit form
+  const fetchRepresentatives = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, full_name:name, email, role")
+        .in("role", ["rep", "manager"])
+        .order("name")
+      
+      if (error) {
+        console.error("Error fetching representatives:", error)
+        // Use fallback representatives on error
+        setRepresentatives([
+          { id: "r1", full_name: "Ahmed Al-Rashid" },
+          { id: "r2", full_name: "Sarah Al-Mahmoud" },
+          { id: "r3", full_name: "Mohammed Al-Zahra" },
+          { id: "r4", full_name: "Fatima Al-Qasimi" }
+        ])
+        return
+      }
+      
+      // If no representatives found, use fallbacks
+      if (!data || data.length === 0) {
+        setRepresentatives([
+          { id: "r1", full_name: "Ahmed Al-Rashid" },
+          { id: "r2", full_name: "Sarah Al-Mahmoud" },
+          { id: "r3", full_name: "Mohammed Al-Zahra" },
+          { id: "r4", full_name: "Fatima Al-Qasimi" }
+        ])
+        return
+      }
+      
+      setRepresentatives(data)
+    } catch (error) {
+      console.error("Error in fetchRepresentatives:", error)
+      // Use fallback representatives on exception
+      setRepresentatives([
+        { id: "r1", full_name: "Ahmed Al-Rashid" },
+        { id: "r2", full_name: "Sarah Al-Mahmoud" },
+        { id: "r3", full_name: "Mohammed Al-Zahra" },
+        { id: "r4", full_name: "Fatima Al-Qasimi" }
+      ])
+    }
+  }
+
   // Fetch proposals on component mount
   useEffect(() => {
     fetchProposals()
+    fetchRepresentatives()
   }, [])
 
   const filteredProposals = proposals.filter((proposal) => {
@@ -251,6 +316,80 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
       setIsDeleting(false)
       setDeleteProposal(null) // Close dialog
     }
+  }
+
+  const handleStartEdit = () => {
+    if (selectedProposal) {
+      setEditProposal({...selectedProposal});
+      setIsEditing(true);
+    }
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editProposal) return;
+    setIsSaving(true);
+    
+    try {
+      // Find the representative ID from the name
+      const selectedRep = representatives.find(r => r.full_name === editProposal.assignedRep);
+      
+      // Prepare data for update
+      const updateData = {
+        duration: editProposal.duration,
+        participants: editProposal.participants,
+        total_price: editProposal.totalPrice,
+        status: editProposal.status,
+        notes: editProposal.notes,
+        assigned_rep: selectedRep?.id || null,
+        add_ons: editProposal.addOns
+      };
+      
+      // Update in Supabase
+      const { error } = await supabase
+        .from('proposals')
+        .update(updateData)
+        .eq('id', editProposal.id);
+      
+      if (error) {
+        console.error("Error updating proposal:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update proposal: " + error.message,
+          variant: "destructive",
+          duration: 5000,
+        });
+      } else {
+        // Update in local state
+        const updatedProposals = proposals.map(p => 
+          p.id === editProposal.id ? editProposal : p
+        );
+        setProposals(updatedProposals);
+        setSelectedProposal(editProposal);
+        
+        toast({
+          title: "Success",
+          description: "Proposal updated successfully.",
+          duration: 3000,
+        });
+        
+        setIsEditing(false);
+      }
+    } catch (error: any) {
+      console.error("Error in handleSaveEdit:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred: " + (error.message || "Please try again"),
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditProposal(null);
   }
 
   return (
@@ -527,9 +666,20 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
                   <CardTitle>{selectedProposal.proposalId}</CardTitle>
                   <CardDescription>{selectedProposal.company}</CardDescription>
                 </div>
-                <Button variant="ghost" onClick={() => setSelectedProposal(null)}>
-                  ×
-                </Button>
+                <div className="flex gap-2">
+                  {!isEditing && (userRole === "Admin" || userRole === "Manager") && (
+                    <Button variant="outline" onClick={handleStartEdit}>
+                      Edit
+                    </Button>
+                  )}
+                  <Button variant="ghost" onClick={() => {
+                    setSelectedProposal(null);
+                    setIsEditing(false);
+                    setEditProposal(null);
+                  }}>
+                    ×
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -544,56 +694,187 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
                 </div>
                 <div>
                   <label className="text-sm font-medium">Duration</label>
-                  <p className="text-sm">{selectedProposal.duration}</p>
+                  {isEditing ? (
+                    <Select
+                      value={editProposal?.duration}
+                      onValueChange={(value) => {
+                        setEditProposal(prev => prev ? {...prev, duration: value} : null);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Select duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3-day">3 Days</SelectItem>
+                        <SelectItem value="5-day">5 Days</SelectItem>
+                        <SelectItem value="7-day">7 Days</SelectItem>
+                        <SelectItem value="10-day">10 Days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm">{selectedProposal.duration}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium">Participants</label>
-                  <p className="text-sm">{selectedProposal.participants || "N/A"}</p>
+                  {isEditing ? (
+                    <Input
+                      type="number"
+                      min="0"
+                      className="h-8 text-sm"
+                      value={editProposal?.participants || ''}
+                      onChange={(e) => {
+                        setEditProposal(prev => prev ? {
+                          ...prev, 
+                          participants: parseInt(e.target.value) || 0
+                        } : null);
+                      }}
+                    />
+                  ) : (
+                    <p className="text-sm">{selectedProposal.participants || "N/A"}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium">Status</label>
-                  <Badge variant={getStatusColor(selectedProposal.status)} className="ml-2">
-                    {selectedProposal.status}
-                  </Badge>
+                  {isEditing ? (
+                    <Select
+                      value={editProposal?.status}
+                      onValueChange={(value) => {
+                        setEditProposal(prev => prev ? {
+                          ...prev, 
+                          status: value as ("Draft" | "Sent" | "Accepted")
+                        } : null);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Draft">Draft</SelectItem>
+                        <SelectItem value="Sent">Sent</SelectItem>
+                        <SelectItem value="Accepted">Accepted</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge variant={getStatusColor(selectedProposal.status)} className="ml-2">
+                      {selectedProposal.status}
+                    </Badge>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium">Total Price</label>
-                  <p className="text-sm font-medium">${selectedProposal.totalPrice.toLocaleString()}</p>
+                  {isEditing ? (
+                    <div className="flex items-center">
+                      <span className="mr-2">$</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        className="h-8 text-sm"
+                        value={editProposal?.totalPrice || 0}
+                        onChange={(e) => {
+                          setEditProposal(prev => prev ? {
+                            ...prev, 
+                            totalPrice: parseInt(e.target.value) || 0
+                          } : null);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm font-medium">${selectedProposal.totalPrice.toLocaleString()}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium">Created On</label>
                   <p className="text-sm">{selectedProposal.createdOn}</p>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Add-ons</label>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {selectedProposal.addOns?.length > 0 ? (
-                    selectedProposal.addOns.map((addon, index) => (
-                      <Badge key={index} variant="outline">
-                        {addon}
-                      </Badge>
-                    ))
+                <div className="col-span-2">
+                  <label className="text-sm font-medium">Assigned Rep</label>
+                  {isEditing ? (
+                    <Select
+                      value={editProposal?.assignedRep}
+                      onValueChange={(value) => {
+                        const selectedRep = representatives.find(r => r.full_name === value);
+                        setEditProposal(prev => prev ? {
+                          ...prev, 
+                          assignedRep: value,
+                          assigned_rep: selectedRep?.id || null
+                        } : null);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Select representative" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {representatives.map((rep) => (
+                          <SelectItem key={rep.id} value={rep.full_name}>
+                            {rep.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   ) : (
-                    <p className="text-sm text-gray-500">None</p>
+                    <p className="text-sm">{selectedProposal.assignedRep}</p>
                   )}
                 </div>
               </div>
 
-              {selectedProposal.notes && (
-                <div>
-                  <label className="text-sm font-medium">Notes</label>
-                  <p className="text-sm mt-1 whitespace-pre-wrap">{selectedProposal.notes}</p>
-                </div>
-              )}
-
               <div>
-                <label className="text-sm font-medium">Assigned Rep</label>
-                <p className="text-sm">{selectedProposal.assignedRep}</p>
+                <label className="text-sm font-medium">Add-ons</label>
+                {isEditing ? (
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {addOnOptions.map((addOn) => (
+                      <div key={addOn} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`edit-${addOn}`}
+                          checked={editProposal?.addOns.includes(addOn)}
+                          onCheckedChange={() => {
+                            setEditProposal(prev => {
+                              if (!prev) return null;
+                              const addOns = prev.addOns.includes(addOn) 
+                                ? prev.addOns.filter(a => a !== addOn) 
+                                : [...prev.addOns, addOn];
+                              return {...prev, addOns};
+                            });
+                          }}
+                        />
+                        <Label htmlFor={`edit-${addOn}`} className="text-sm">
+                          {addOn}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedProposal.addOns?.length > 0 ? (
+                      selectedProposal.addOns.map((addon, index) => (
+                        <Badge key={index} variant="outline">
+                          {addon}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">None</p>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div>
+                <label className="text-sm font-medium">Notes</label>
+                {isEditing ? (
+                  <Textarea
+                    className="mt-1"
+                    rows={4}
+                    value={editProposal?.notes || ''}
+                    onChange={(e) => {
+                      setEditProposal(prev => prev ? {...prev, notes: e.target.value} : null);
+                    }}
+                  />
+                ) : (
+                  <p className="text-sm mt-1 whitespace-pre-wrap">{selectedProposal.notes || "No notes provided."}</p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-2">
                 {selectedProposal.drive_folder_en && (
                   <Button variant="outline" size="sm" asChild>
                     <a href={selectedProposal.drive_folder_en} target="_blank" rel="noopener noreferrer">
@@ -610,18 +891,46 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
                     </a>
                   </Button>
                 )}
-                {(userRole === "Admin" || userRole === "Manager") && (
+                {(userRole === "Admin" || userRole === "Manager") && !isEditing && (
                   <Button 
                     variant="destructive" 
                     size="sm"
                     onClick={() => {
-                      setSelectedProposal(null); // Close detail view
-                      setDeleteProposal(selectedProposal); // Open delete confirmation
+                      setSelectedProposal(null);
+                      setDeleteProposal(selectedProposal);
                     }}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete Proposal
                   </Button>
+                )}
+                
+                {isEditing && (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={handleSaveEdit}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Changes"
+                      )}
+                    </Button>
+                  </>
                 )}
               </div>
             </CardContent>
