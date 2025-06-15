@@ -394,7 +394,7 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
   const generateProposalCode = () => {
     const year = new Date().getFullYear();
     const random = Math.floor(Math.random() * 900) + 100; // Random 3-digit number
-    return `PROP-${year}-${random}`;
+    return `GHALIAH-${year}-${random}`;
   };
 
   // Function to submit proposal to Supabase
@@ -820,21 +820,25 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
                 <h3 className="text-lg font-semibold">Configuration</h3>
 
                 <div className="space-y-2">
-                  <Label htmlFor="duration">Duration *</Label>
-                  <Select
-                    value={formData.duration}
-                    onValueChange={(value: string) => setFormData((prev) => ({ ...prev, duration: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select duration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="3-day">3 Days</SelectItem>
-                      <SelectItem value="5-day">5 Days</SelectItem>
-                      <SelectItem value="7-day">7 Days</SelectItem>
-                      <SelectItem value="10-day">10 Days</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="duration">Duration (days) *</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="duration"
+                      type="number"
+                      min="1"
+                      max="365"
+                      className="w-24"
+                      value={formData.duration ? parseInt(formData.duration.split('-')[0]) : ""}
+                      onChange={(e) => {
+                        const days = parseInt(e.target.value);
+                        if (!isNaN(days) && days >= 1 && days <= 365) {
+                          setFormData((prev) => ({ ...prev, duration: `${days}-day` }));
+                        }
+                      }}
+                      placeholder="Days"
+                    />
+                    <span className="text-gray-600">days</span>
+                  </div>
                 </div>
 
                 {formData.serviceType === "Training" && (

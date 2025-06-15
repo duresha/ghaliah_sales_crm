@@ -7,10 +7,16 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, ExternalLink, FileText, Plus, Eye, Loader2, X, Mail, Phone } from "lucide-react"
+import { Search, ExternalLink, FileText, Plus, Eye, Loader2, X, Trash2 } from "lucide-react"
 import { CompanyForm } from "@/components/company-form"
 import { supabase } from "@/lib/supabaseClient"
 import { useToast } from "@/hooks/use-toast"
+import { Textarea } from "@/components/ui/textarea"
+import { format } from "date-fns"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface Company {
   id: string
@@ -19,6 +25,7 @@ interface Company {
   region: string
   status: "Lead" | "Proposal Sent" | "Follow-Up" | "Accepted" | "Closed"
   assignedRep: string
+  assigned_rep?: string | null
   reminderDate: string
   deadlineDate: string
   proposalLinkEN?: string
@@ -42,7 +49,60 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
   const [showCompanyForm, setShowCompanyForm] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [deleteCompany, setDeleteCompany] = useState<Company | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editCompany, setEditCompany] = useState<Company | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
+  
+  // Define representatives for edit form
+  const [representatives, setRepresentatives] = useState<{id: string, full_name: string}[]>([])
+
+  // Fetch representatives for the edit form
+  const fetchRepresentatives = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, full_name:name, email, role")
+        .in("role", ["rep", "manager"])
+        .order("name")
+      
+      if (error) {
+        console.error("Error fetching representatives:", error)
+        // Use fallback representatives on error
+        setRepresentatives([
+          { id: "r1", full_name: "Ahmed Al-Rashid" },
+          { id: "r2", full_name: "Sarah Al-Mahmoud" },
+          { id: "r3", full_name: "Mohammed Al-Zahra" },
+          { id: "r4", full_name: "Fatima Al-Qasimi" }
+        ])
+        return
+      }
+      
+      // If no representatives found, use fallbacks
+      if (!data || data.length === 0) {
+        setRepresentatives([
+          { id: "r1", full_name: "Ahmed Al-Rashid" },
+          { id: "r2", full_name: "Sarah Al-Mahmoud" },
+          { id: "r3", full_name: "Mohammed Al-Zahra" },
+          { id: "r4", full_name: "Fatima Al-Qasimi" }
+        ])
+        return
+      }
+      
+      setRepresentatives(data)
+    } catch (error) {
+      console.error("Error in fetchRepresentatives:", error)
+      // Use fallback representatives on exception
+      setRepresentatives([
+        { id: "r1", full_name: "Ahmed Al-Rashid" },
+        { id: "r2", full_name: "Sarah Al-Mahmoud" },
+        { id: "r3", full_name: "Mohammed Al-Zahra" },
+        { id: "r4", full_name: "Fatima Al-Qasimi" }
+      ])
+    }
+  }
 
   // Fetch companies from Supabase
   const fetchCompanies = async () => {
@@ -91,8 +151,12 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
         region: company.region,
         status: company.status as "Lead" | "Proposal Sent" | "Follow-Up" | "Accepted" | "Closed",
         assignedRep: repsMap[company.assigned_rep] || "Unassigned",
+        assigned_rep: company.assigned_rep,
         reminderDate: company.reminder_date || "",
         deadlineDate: company.deadline_date || "",
+        proposalLinkEN: company.proposal_link_en || "",
+        proposalLinkAR: company.proposal_link_ar || "",
+        driveFolderLink: company.drive_folder_link || "",
         tags: company.tags || [],
         notes: company.notes || "",
         createdTime: new Date(company.created_at).toISOString().split('T')[0],
@@ -111,9 +175,10 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
     }
   }
 
-  // Fetch companies on component mount
+  // Fetch companies and representatives on component mount
   useEffect(() => {
     fetchCompanies()
+    fetchRepresentatives()
   }, [])
 
   const filteredCompanies = companies.filter((company) => {
@@ -152,6 +217,123 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
       default:
         return "outline"
     }
+  }
+
+  const handleDeleteCompany = async () => {
+    if (!deleteCompany) return
+
+    setIsDeleting(true)
+    try {
+      // Delete the record from Supabase
+      const { error } = await supabase
+        .from('companies')
+        .delete()
+        .eq('id', deleteCompany.id)
+
+      if (error) {
+        console.error("Error deleting company:", error)
+        toast({
+          title: "Error",
+          description: "Failed to delete the company: " + error.message,
+          variant: "destructive",
+          duration: 5000,
+        })
+      } else {
+        // Show success toast
+        toast({
+          title: "Success",
+          description: `${deleteCompany.name} has been deleted.`,
+          variant: "default",
+          duration: 3000,
+        })
+        
+        // Remove from local state
+        setCompanies(companies.filter(c => c.id !== deleteCompany.id))
+      }
+    } catch (error: any) {
+      console.error("Error in handleDeleteCompany:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred: " + (error.message || "Please try again"),
+        variant: "destructive",
+        duration: 5000,
+      })
+    } finally {
+      setIsDeleting(false)
+      setDeleteCompany(null) // Close dialog
+    }
+  }
+
+  const handleStartEdit = () => {
+    if (selectedCompany) {
+      setEditCompany({...selectedCompany});
+      setIsEditing(true);
+    }
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editCompany) return;
+    setIsSaving(true);
+    
+    try {
+      // Find the representative ID from the name
+      const selectedRep = representatives.find(r => r.full_name === editCompany.assignedRep);
+      
+      // Prepare data for update
+      const updateData = {
+        status: editCompany.status,
+        assigned_rep: selectedRep?.id || null,
+        reminder_date: editCompany.reminderDate,
+        deadline_date: editCompany.deadlineDate,
+        notes: editCompany.notes
+      };
+      
+      // Update in Supabase
+      const { error } = await supabase
+        .from('companies')
+        .update(updateData)
+        .eq('id', editCompany.id);
+      
+      if (error) {
+        console.error("Error updating company:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update company: " + error.message,
+          variant: "destructive",
+          duration: 5000,
+        });
+      } else {
+        // Update in local state
+        const updatedCompanies = companies.map(c => 
+          c.id === editCompany.id ? editCompany : c
+        );
+        setCompanies(updatedCompanies);
+        setSelectedCompany(editCompany);
+        
+        toast({
+          title: "Success",
+          description: "Company updated successfully.",
+          duration: 3000,
+        });
+        
+        setIsEditing(false);
+      }
+    } catch (error: any) {
+      console.error("Error in handleSaveEdit:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred: " + (error.message || "Please try again"),
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditCompany(null);
   }
 
   const statusColumns = ["Lead", "Proposal Sent", "Follow-Up", "Accepted", "Closed"]
@@ -268,12 +450,6 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
                         <Button variant="ghost" size="sm" onClick={() => setSelectedCompany(company)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
-                          <Mail className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Phone className="h-4 w-4" />
-                        </Button>
                         {company.proposalLinkEN && (
                           <Button variant="ghost" size="sm" asChild>
                             <a href={company.proposalLinkEN} target="_blank" rel="noopener noreferrer">
@@ -286,6 +462,17 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
                             <a href={company.driveFolderLink} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="h-4 w-4" />
                             </a>
+                          </Button>
+                        )}
+                        {(userRole === "Admin" || userRole === "Manager") && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setDeleteCompany(company)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            title="Delete Company"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
@@ -308,7 +495,8 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
                 {filteredCompanies
                   .filter((company) => company.status === status)
                   .map((company) => (
-                    <Card key={company.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                    <Card key={company.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                          onClick={() => setSelectedCompany(company)}>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm">{company.name}</CardTitle>
                         <CardDescription className="text-xs">
@@ -327,14 +515,31 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-500">Due: {company.reminderDate}</span>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedCompany(company)}>
+                            <Button variant="ghost" size="sm" onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedCompany(company);
+                            }}>
                               <Eye className="h-3 w-3" />
                             </Button>
                             {company.proposalLinkEN && (
-                              <Button variant="ghost" size="sm" asChild>
+                              <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
                                 <a href={company.proposalLinkEN} target="_blank" rel="noopener noreferrer">
                                   <FileText className="h-3 w-3" />
                                 </a>
+                              </Button>
+                            )}
+                            {(userRole === "Admin" || userRole === "Manager") && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent card click
+                                  setDeleteCompany(company);
+                                }}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1"
+                                title="Delete Company"
+                              >
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             )}
                           </div>
@@ -359,30 +564,151 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
                     {selectedCompany.industry} • {selectedCompany.region}
                   </CardDescription>
                 </div>
-                <Button variant="ghost" onClick={() => setSelectedCompany(null)}>
-                  <X className="h-4 w-4" />
-                </Button>
+                <div className="flex gap-2">
+                  {!isEditing && (userRole === "Admin" || userRole === "Manager") && (
+                    <Button variant="outline" onClick={handleStartEdit}>
+                      Edit
+                    </Button>
+                  )}
+                  <Button variant="ghost" onClick={() => {
+                    setSelectedCompany(null);
+                    setIsEditing(false);
+                    setEditCompany(null);
+                  }}>
+                    ×
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">Status</label>
-                  <Badge variant={getStatusColor(selectedCompany.status)} className="ml-2">
-                    {selectedCompany.status}
-                  </Badge>
+                  {isEditing ? (
+                    <Select
+                      value={editCompany?.status}
+                      onValueChange={(value) => {
+                        setEditCompany(prev => prev ? {
+                          ...prev, 
+                          status: value as ("Lead" | "Proposal Sent" | "Follow-Up" | "Accepted" | "Closed")
+                        } : null);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Lead">Lead</SelectItem>
+                        <SelectItem value="Proposal Sent">Proposal Sent</SelectItem>
+                        <SelectItem value="Follow-Up">Follow-Up</SelectItem>
+                        <SelectItem value="Accepted">Accepted</SelectItem>
+                        <SelectItem value="Closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge variant={getStatusColor(selectedCompany.status)} className="ml-2">
+                      {selectedCompany.status}
+                    </Badge>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium">Assigned Rep</label>
-                  <p className="text-sm">{selectedCompany.assignedRep}</p>
+                  {isEditing ? (
+                    <Select
+                      value={editCompany?.assignedRep}
+                      onValueChange={(value) => {
+                        const selectedRep = representatives.find(r => r.full_name === value);
+                        setEditCompany(prev => prev ? {
+                          ...prev, 
+                          assignedRep: value,
+                          assigned_rep: selectedRep?.id || null
+                        } : null);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Select representative" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {representatives.map((rep) => (
+                          <SelectItem key={rep.id} value={rep.full_name}>
+                            {rep.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm">{selectedCompany.assignedRep}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium">Reminder Date</label>
-                  <p className="text-sm">{selectedCompany.reminderDate || "No date set"}</p>
+                  {isEditing ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className="w-full justify-start text-left font-normal h-8 text-sm"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {editCompany?.reminderDate ? (
+                            editCompany.reminderDate
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={editCompany?.reminderDate ? new Date(editCompany.reminderDate) : undefined}
+                          onSelect={(date) => {
+                            setEditCompany(prev => prev ? {
+                              ...prev,
+                              reminderDate: date ? format(date, 'yyyy-MM-dd') : ''
+                            } : null)
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <p className="text-sm">{selectedCompany.reminderDate || "No date set"}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium">Deadline Date</label>
-                  <p className="text-sm">{selectedCompany.deadlineDate || "No date set"}</p>
+                  {isEditing ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className="w-full justify-start text-left font-normal h-8 text-sm"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {editCompany?.deadlineDate ? (
+                            editCompany.deadlineDate
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={editCompany?.deadlineDate ? new Date(editCompany.deadlineDate) : undefined}
+                          onSelect={(date) => {
+                            setEditCompany(prev => prev ? {
+                              ...prev,
+                              deadlineDate: date ? format(date, 'yyyy-MM-dd') : ''
+                            } : null)
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <p className="text-sm">{selectedCompany.deadlineDate || "No date set"}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium">Created</label>
@@ -403,12 +729,23 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
 
               <div>
                 <label className="text-sm font-medium">Notes</label>
-                <p className="text-sm text-gray-600 mt-1">
-                  {selectedCompany.notes || "No notes available"}
-                </p>
+                {isEditing ? (
+                  <Textarea
+                    className="mt-1"
+                    rows={4}
+                    value={editCompany?.notes || ''}
+                    onChange={(e) => {
+                      setEditCompany(prev => prev ? {...prev, notes: e.target.value} : null);
+                    }}
+                  />
+                ) : (
+                  <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">
+                    {selectedCompany.notes || "No notes available"}
+                  </p>
+                )}
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 pt-2">
                 {selectedCompany.proposalLinkEN && (
                   <Button variant="outline" size="sm" asChild>
                     <a href={selectedCompany.proposalLinkEN} target="_blank" rel="noopener noreferrer">
@@ -433,6 +770,46 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
                     </a>
                   </Button>
                 )}
+                
+                {isEditing ? (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={handleSaveEdit}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Changes"
+                      )}
+                    </Button>
+                  </>
+                ) : ((userRole === "Admin" || userRole === "Manager") && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => {
+                      setSelectedCompany(null);
+                      setDeleteCompany(selectedCompany);
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Company
+                  </Button>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -440,6 +817,48 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
       )}
       {showCompanyForm && (
         <CompanyForm onClose={() => setShowCompanyForm(false)} onSubmit={handleAddCompany} userRole={userRole} />
+      )}
+      {deleteCompany && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Confirm Deletion</CardTitle>
+              <CardDescription>
+                Are you sure you want to delete {deleteCompany.name}? This action cannot be undone.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p><span className="font-medium">Industry:</span> {deleteCompany.industry}</p>
+                <p><span className="font-medium">Region:</span> {deleteCompany.region}</p>
+                <p><span className="font-medium">Status:</span> {deleteCompany.status}</p>
+              </div>
+            </CardContent>
+            <div className="flex justify-end gap-2 p-6 pt-0">
+              <Button 
+                variant="outline" 
+                onClick={() => setDeleteCompany(null)} 
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleDeleteCompany}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
+              </Button>
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   )

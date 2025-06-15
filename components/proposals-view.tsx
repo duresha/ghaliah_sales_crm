@@ -156,7 +156,7 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
       const transformedProposals: Proposal[] = proposalsData.map(proposal => {
         return {
           id: proposal.id,
-          proposalId: proposal.proposal_code || `PROP-${Math.floor(Math.random() * 1000)}`,
+          proposalId: proposal.proposal_code || `GHALIAH-${Math.floor(Math.random() * 1000)}`,
           company: companiesMap[proposal.company_id] || "Unknown Company",
           serviceType: proposal.service || "Unknown Service",
           subService: proposal.sub_service || "",
@@ -695,45 +695,48 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
                 <div>
                   <label className="text-sm font-medium">Duration</label>
                   {isEditing ? (
-                    <Select
-                      value={editProposal?.duration}
-                      onValueChange={(value) => {
-                        setEditProposal(prev => prev ? {...prev, duration: value} : null);
-                      }}
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Select duration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="3-day">3 Days</SelectItem>
-                        <SelectItem value="5-day">5 Days</SelectItem>
-                        <SelectItem value="7-day">7 Days</SelectItem>
-                        <SelectItem value="10-day">10 Days</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="365"
+                        className="h-8 text-sm w-24"
+                        value={editProposal?.duration ? parseInt(editProposal.duration.split('-')[0]) : ""}
+                        onChange={(e) => {
+                          const days = parseInt(e.target.value);
+                          if (!isNaN(days) && days >= 1 && days <= 365) {
+                            setEditProposal(prev => prev ? {...prev, duration: `${days}-day`} : null);
+                          }
+                        }}
+                        placeholder="Days"
+                      />
+                      <span className="text-gray-600">days</span>
+                    </div>
                   ) : (
                     <p className="text-sm">{selectedProposal.duration}</p>
                   )}
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Participants</label>
-                  {isEditing ? (
-                    <Input
-                      type="number"
-                      min="0"
-                      className="h-8 text-sm"
-                      value={editProposal?.participants || ''}
-                      onChange={(e) => {
-                        setEditProposal(prev => prev ? {
-                          ...prev, 
-                          participants: parseInt(e.target.value) || 0
-                        } : null);
-                      }}
-                    />
-                  ) : (
-                    <p className="text-sm">{selectedProposal.participants || "N/A"}</p>
-                  )}
-                </div>
+                {(selectedProposal.serviceType === "Training" || (editProposal && editProposal.serviceType === "Training")) && (
+                  <div>
+                    <label className="text-sm font-medium">Participants</label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        min="0"
+                        className="h-8 text-sm"
+                        value={editProposal?.participants || ''}
+                        onChange={(e) => {
+                          setEditProposal(prev => prev ? {
+                            ...prev, 
+                            participants: parseInt(e.target.value) || 0
+                          } : null);
+                        }}
+                      />
+                    ) : (
+                      <p className="text-sm">{selectedProposal.participants || "N/A"}</p>
+                    )}
+                  </div>
+                )}
                 <div>
                   <label className="text-sm font-medium">Status</label>
                   {isEditing ? (
@@ -985,4 +988,3 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
     </div>
   )
 }
-

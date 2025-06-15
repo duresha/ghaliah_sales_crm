@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,8 @@ import { CompaniesView } from "@/components/companies-view"
 import { ProposalsView } from "@/components/proposals-view"
 import { ActivitiesView } from "@/components/activities-view"
 import { RepresentativesView } from "@/components/representatives-view"
+import { supabase } from "@/lib/supabaseClient"
+import { startOfMonth, endOfMonth } from "date-fns"
 
 interface User {
   email: string
@@ -18,9 +20,23 @@ interface User {
   name: string
 }
 
+interface StatsData {
+  totalCompanies: string;
+  activeProposals: string;
+  monthlyRevenue: string;
+  conversionRate: string;
+}
+
 export default function Dashboard() {
   const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState("overview")
+  const [statsData, setStatsData] = useState<StatsData>({
+    totalCompanies: "0",
+    activeProposals: "0",
+    monthlyRevenue: "$0K",
+    conversionRate: "68%", // Keeping this static as requested
+  })
+  const [isLoading, setIsLoading] = useState(true)
 
   const user: User = {
     email: session?.user?.email || "",
@@ -28,31 +44,92 @@ export default function Dashboard() {
     role: (session?.user as any)?.role || "Rep",
   }
 
+  useEffect(() => {
+    async function fetchStats() {
+      setIsLoading(true)
+      
+      try {
+        // Get total companies count
+        const { count: companiesCount, error: companiesError } = await supabase
+          .from('companies')
+          .select('*', { count: 'exact', head: true })
+        
+        if (companiesError) throw companiesError
+        
+        // Get active proposals (non-draft)
+        const { count: proposalsCount, error: proposalsError } = await supabase
+          .from('proposals')
+          .select('*', { count: 'exact', head: true })
+          .neq('status', 'Draft')
+          
+        if (proposalsError) throw proposalsError
+        
+        // Get this month's revenue from active proposals
+        const now = new Date()
+        const firstDayOfMonth = startOfMonth(now)
+        const lastDayOfMonth = endOfMonth(now)
+        
+        const { data: revenueData, error: revenueError } = await supabase
+          .from('proposals')
+          .select('total_price')
+          .in('status', ['Sent', 'Accepted'])
+          .gte('created_at', firstDayOfMonth.toISOString())
+          .lte('created_at', lastDayOfMonth.toISOString())
+          
+        if (revenueError) throw revenueError
+        
+        // Calculate total revenue
+        const totalRevenue = revenueData.reduce((sum, proposal) => {
+          return sum + (proposal.total_price || 0)
+        }, 0)
+        
+        // Format the revenue as $XK
+        const formattedRevenue = `$${Math.round(totalRevenue / 1000)}K`
+        
+        // Update stats data
+        setStatsData({
+          totalCompanies: String(companiesCount || 0),
+          activeProposals: String(proposalsCount || 0),
+          monthlyRevenue: totalRevenue ? formattedRevenue : "$0K",
+          conversionRate: "68%", // Keeping this static as requested
+        })
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    if (session) {
+      fetchStats()
+    }
+  }, [session])
+
   const stats = [
     {
       title: "Total Companies",
-      value: user.role === "Rep" ? "12" : "48",
+      value: isLoading ? "Loading..." : statsData.totalCompanies,
       change: "+12%",
       icon: Building2,
       color: "text-blue-600",
     },
     {
       title: "Active Proposals",
-      value: user.role === "Rep" ? "8" : "23",
+      value: isLoading ? "Loading..." : statsData.activeProposals,
       change: "+8%",
       icon: FileText,
       color: "text-green-600",
     },
     {
-      title: "This Month Revenue",
-      value: user.role === "Rep" ? "$45K" : "$180K",
+      title: "Active Proposals Revenue",
+      value: isLoading ? "Loading..." : statsData.monthlyRevenue,
       change: "+23%",
       icon: DollarSign,
       color: "text-purple-600",
     },
     {
       title: "Conversion Rate",
-      value: "68%",
+      value: statsData.conversionRate, // Static value
       change: "+5%",
       icon: Target,
       color: "text-orange-600",
