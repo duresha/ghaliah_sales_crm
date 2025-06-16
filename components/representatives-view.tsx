@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Phone, Mail, Building2, FileText, Plus, Edit, TrendingUp } from "lucide-react"
+import { Search, Phone, Mail, Building2, FileText, Plus, Edit, TrendingUp, X } from "lucide-react"
 import { RepresentativeForm } from "@/components/representative-form"
 import { supabase } from "@/lib/supabaseClient"
 import { useToast } from "@/hooks/use-toast"
@@ -195,141 +195,164 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
       ) : (
         <>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredRepresentatives.map((rep) => (
-          <Card key={rep.id} className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <Avatar>
-                  <AvatarImage src="/placeholder-user.jpg" alt={rep.name} />
-                  <AvatarFallback>
-                    {rep.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{rep.name}</CardTitle>
-                  <CardDescription className="flex items-center gap-2">
-                    <Mail className="h-3 w-3" />
-                    {rep.email}
-                  </CardDescription>
-                </div>
-                <Badge variant={getRoleBadgeColor(rep.role)}>{rep.role}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Phone className="h-4 w-4" />
-                    {rep.phone || "No phone number"}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div className="flex items-center gap-1">
-                    <Building2 className="h-3 w-3" />
-                    <span className="text-gray-600">Companies</span>
-                  </div>
-                  <div className="font-semibold">{rep.assignedCompanies}</div>
-                </div>
-                <div>
-                  <div className="flex items-center gap-1">
-                    <FileText className="h-3 w-3" />
-                    <span className="text-gray-600">Proposals</span>
-                  </div>
-                  <div className="font-semibold">{rep.assignedProposals}</div>
+        {filteredRepresentatives.length === 0 ? (
+          <Card className="col-span-full p-12">
+            <div className="text-center">
+              <div className="relative mx-auto w-12 h-12 mb-4">
+                <FileText className="h-12 w-12 text-gray-300" />
+                <div className="absolute top-0 right-0 w-4 h-4 bg-red-100 rounded-full flex items-center justify-center">
+                  <X className="h-3 w-3 text-red-500" />
                 </div>
               </div>
-
-              {rep.totalRevenue > 0 && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Revenue</span>
-                    <span className="font-semibold">${rep.totalRevenue.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Conversion Rate</span>
-                    <span className="font-semibold">{rep.conversionRate}%</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Last Activity</span>
-                <span>{rep.lastActivity}</span>
-              </div>
-
+              <h3 className="text-lg font-semibold mb-1">No Team Members Available</h3>
+              <p className="text-gray-500 mb-4">You haven't added any team members yet.</p>
               {userRole === "Admin" && (
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Edit className="mr-2 h-3 w-3" />
-                    Edit
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Mail className="h-3 w-3" />
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Phone className="h-3 w-3" />
-                  </Button>
-                </div>
+                <Button onClick={() => setShowRepresentativeForm(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Your First Team Member
+                </Button>
               )}
-            </CardContent>
+            </div>
           </Card>
-        ))}
+        ) : (
+          filteredRepresentatives.map((rep) => (
+            <Card key={rep.id} className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Avatar>
+                    <AvatarImage src="/placeholder-user.jpg" alt={rep.name} />
+                    <AvatarFallback>
+                      {rep.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <CardTitle className="text-lg">{rep.name}</CardTitle>
+                    <CardDescription className="flex items-center gap-2">
+                      <Mail className="h-3 w-3" />
+                      {rep.email}
+                    </CardDescription>
+                  </div>
+                  <Badge variant={getRoleBadgeColor(rep.role)}>{rep.role}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Phone className="h-4 w-4" />
+                      {rep.phone || "No phone number"}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />
+                      <span className="text-gray-600">Companies</span>
+                    </div>
+                    <div className="font-semibold">{rep.assignedCompanies}</div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1">
+                      <FileText className="h-3 w-3" />
+                      <span className="text-gray-600">Proposals</span>
+                    </div>
+                    <div className="font-semibold">{rep.assignedProposals}</div>
+                  </div>
+                </div>
+
+                {rep.totalRevenue > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Revenue</span>
+                      <span className="font-semibold">${rep.totalRevenue.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Conversion Rate</span>
+                      <span className="font-semibold">{rep.conversionRate}%</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Last Activity</span>
+                  <span>{rep.lastActivity}</span>
+                </div>
+
+                {userRole === "Admin" && (
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Edit className="mr-2 h-3 w-3" />
+                      Edit
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Mail className="h-3 w-3" />
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Phone className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance Overview</CardTitle>
-          <CardDescription>Detailed performance metrics for all team members</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Representative</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Companies</TableHead>
-                <TableHead>Proposals</TableHead>
-                <TableHead>Revenue</TableHead>
-                <TableHead>Conversion</TableHead>
-                <TableHead>Last Activity</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRepresentatives.map((rep) => (
-                <TableRow key={rep.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src="/placeholder-user.jpg" alt={rep.name} />
-                        <AvatarFallback className="text-xs">
-                          {rep.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{rep.name}</div>
-                        <div className="text-xs text-gray-500">{rep.email}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getRoleBadgeColor(rep.role)}>{rep.role}</Badge>
-                  </TableCell>
-                  <TableCell>{rep.assignedCompanies}</TableCell>
-                  <TableCell>{rep.assignedProposals}</TableCell>
-                  <TableCell>{rep.totalRevenue > 0 ? `$${rep.totalRevenue.toLocaleString()}` : "N/A"}</TableCell>
-                  <TableCell>{rep.conversionRate > 0 ? `${rep.conversionRate}%` : "N/A"}</TableCell>
-                  <TableCell>{rep.lastActivity}</TableCell>
+      {filteredRepresentatives.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Performance Overview</CardTitle>
+            <CardDescription>Detailed performance metrics for all team members</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Representative</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Companies</TableHead>
+                  <TableHead>Proposals</TableHead>
+                  <TableHead>Revenue</TableHead>
+                  <TableHead>Conversion</TableHead>
+                  <TableHead>Last Activity</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {filteredRepresentatives.map((rep) => (
+                  <TableRow key={rep.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src="/placeholder-user.jpg" alt={rep.name} />
+                          <AvatarFallback className="text-xs">
+                            {rep.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">{rep.name}</div>
+                          <div className="text-xs text-gray-500">{rep.email}</div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getRoleBadgeColor(rep.role)}>{rep.role}</Badge>
+                    </TableCell>
+                    <TableCell>{rep.assignedCompanies}</TableCell>
+                    <TableCell>{rep.assignedProposals}</TableCell>
+                    <TableCell>{rep.totalRevenue > 0 ? `$${rep.totalRevenue.toLocaleString()}` : "N/A"}</TableCell>
+                    <TableCell>{rep.conversionRate > 0 ? `${rep.conversionRate}%` : "N/A"}</TableCell>
+                    <TableCell>{rep.lastActivity}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
         </>
       )}
       {showRepresentativeForm && (

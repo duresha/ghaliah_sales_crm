@@ -65,9 +65,12 @@ export function RepresentativeForm({ onClose, onSubmit, userRole }: Representati
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
+        auth_id: null,
+        temp_password: true,
       }).select()
 
       if (error) {
+        console.error("Supabase error details:", error)
         throw error
       }
 

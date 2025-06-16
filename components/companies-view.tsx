@@ -402,6 +402,23 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
           <Loader2 className="h-8 w-8 animate-spin mr-2" />
           <p>Loading companies...</p>
         </div>
+      ) : companies.length === 0 ? (
+        <Card className="p-12">
+          <div className="text-center">
+            <div className="relative mx-auto w-12 h-12 mb-4">
+              <FileText className="h-12 w-12 text-gray-300" />
+              <div className="absolute top-0 right-0 w-4 h-4 bg-red-100 rounded-full flex items-center justify-center">
+                <X className="h-3 w-3 text-red-500" />
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold mb-1">No Companies Available</h3>
+            <p className="text-gray-500 mb-4">You haven't added any companies yet.</p>
+            <Button onClick={() => setShowCompanyForm(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Your First Company
+            </Button>
+          </div>
+        </Card>
       ) : viewMode === "table" ? (
         <Card>
           <Table>
@@ -420,7 +437,20 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
               {filteredCompanies.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
-                    No companies found. Add your first company!
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="relative mx-auto w-10 h-10 mb-3">
+                        <FileText className="h-10 w-10 text-gray-300" />
+                        <div className="absolute top-0 right-0 w-3 h-3 bg-red-100 rounded-full flex items-center justify-center">
+                          <X className="h-2 w-2 text-red-500" />
+                        </div>
+                      </div>
+                      <p className="text-sm font-medium text-gray-900 mb-1">No companies found</p>
+                      <p className="text-xs text-gray-500 mb-3">Add your first company to get started</p>
+                      <Button size="sm" onClick={() => setShowCompanyForm(true)}>
+                        <Plus className="mr-1 h-3 w-3" />
+                        Add Company
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -547,6 +577,11 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
                       </CardContent>
                     </Card>
                   ))}
+                {filteredCompanies.filter((c) => c.status === status).length === 0 && (
+                  <div className="p-4 text-center text-gray-500 text-sm border border-dashed rounded-md">
+                    No {status.toLowerCase()} companies
+                  </div>
+                )}
               </div>
             </div>
           ))}
