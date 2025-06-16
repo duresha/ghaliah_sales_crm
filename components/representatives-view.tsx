@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Phone, Mail, Building2, FileText, Plus, Edit, TrendingUp, X } from "lucide-react"
+import { Search, Phone, Mail, Building2, FileText, Plus, Edit, TrendingUp, X, Loader2 } from "lucide-react"
 import { RepresentativeForm } from "@/components/representative-form"
 import { supabase } from "@/lib/supabaseClient"
 import { useToast } from "@/hooks/use-toast"
@@ -25,6 +25,14 @@ interface Representative {
   lastActivity: string
 }
 
+interface TeamStats {
+  totalRevenue: number
+  totalCompanies: number
+  activeProposals: number
+  avgConversion: number
+  isLoading: boolean
+}
+
 interface RepresentativesViewProps {
   userRole: "Admin" | "Manager" | "Rep"
 }
@@ -35,19 +43,177 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [isLoading, setIsLoading] = useState(true)
+  const [stats, setStats] = useState<TeamStats>({
+    totalRevenue: 0,
+    totalCompanies: 0,
+    activeProposals: 0,
+    avgConversion: 0,
+    isLoading: true
+  })
   const { toast } = useToast()
+
+  // Fetch statistics from Supabase
+  const fetchStats = async () => {
+    try {
+      setStats(prev => ({ ...prev, isLoading: true }))
+      
+      // Fetch accepted proposals for total revenue
+      const { data: acceptedProposals, error: revenueError } = await supabase
+        .from("proposals")
+        .select("total_price")
+        .eq("status", "Accepted")
+      
+      if (revenueError) throw revenueError
+      
+      // Calculate total revenue
+      const totalRevenue = acceptedProposals?.reduce((sum, proposal) => 
+        sum + (proposal.total_price || 0), 0) || 0
+      
+      // Fetch active companies count
+      const { count: totalCompanies, error: companiesError } = await supabase
+        .from("companies")
+        .select("id", { count: 'exact', head: true })
+      
+      if (companiesError) throw companiesError
+      
+      // Fetch active (sent) proposals count
+      const { count: activeProposals, error: proposalsError } = await supabase
+        .from("proposals")
+        .select("id", { count: 'exact', head: true })
+        .eq("status", "Sent")
+      
+      if (proposalsError) throw proposalsError
+      
+      // Calculate conversion rate (Accepted proposals / Total proposals)
+      const { count: acceptedCount, error: acceptedError } = await supabase
+        .from("proposals")
+        .select("id", { count: 'exact', head: true })
+        .eq("status", "Accepted")
+      
+      if (acceptedError) throw acceptedError
+      
+      const { count: totalProposals, error: totalError } = await supabase
+        .from("proposals")
+        .select("id", { count: 'exact', head: true })
+      
+      if (totalError) throw totalError
+      
+      // Calculate average conversion rate
+      const avgConversion = totalProposals && totalProposals > 0 
+        ? Math.round(((acceptedCount || 0) / totalProposals) * 100) 
+        : 0
+      
+      setStats({
+        totalRevenue,
+        totalCompanies: totalCompanies || 0,
+        activeProposals: activeProposals || 0,
+        avgConversion,
+        isLoading: false
+      })
+      
+    } catch (error) {
+      console.error("Error fetching team statistics:", error)
+      setStats({
+        totalRevenue: 0,
+        totalCompanies: 0,
+        activeProposals: 0,
+        avgConversion: 0,
+        isLoading: false
+      })
+    }
+  }
 
   // Fetch representatives from Supabase
   const fetchRepresentatives = async () => {
     setIsLoading(true)
     try {
-      const { data, error } = await supabase
-        .from("users")
+      // Try to query the performance view first
+      let { data, error } = await supabase
+        .from("representatives_performance_view")
         .select("*")
         .order("name")
 
-      if (error) {
-        throw error
+      // If the view doesn't exist, perform manual queries
+      if (error && error.code === "PGRST116") {
+        console.log("View not found, falling back to manual queries")
+        
+        // Get basic user data
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("*")
+          .order("name")
+
+        if (userError) throw userError
+        
+        if (userData) {
+          // Transform data to match Representative interface
+          data = await Promise.all(
+            userData.map(async (user) => {
+              // Get companies count for this rep
+              const { count: companiesCount } = await supabase
+                .from("companies")
+                .select("id", { count: 'exact', head: true })
+                .eq("assigned_rep", user.id)
+              
+              // Get proposals count for this rep
+              const { count: proposalsCount } = await supabase
+                .from("proposals")
+                .select("id", { count: 'exact', head: true })
+                .eq("assigned_rep", user.id)
+              
+              // Get total revenue for this rep (from accepted proposals)
+              const { data: acceptedProposals } = await supabase
+                .from("proposals")
+                .select("total_price")
+                .eq("assigned_rep", user.id)
+                .eq("status", "Accepted")
+              
+              const totalRevenue = acceptedProposals?.reduce(
+                (sum, proposal) => sum + (proposal.total_price || 0), 
+                0
+              ) || 0
+              
+              // Calculate conversion rate
+              const { count: acceptedCount } = await supabase
+                .from("proposals")
+                .select("id", { count: 'exact', head: true })
+                .eq("assigned_rep", user.id)
+                .eq("status", "Accepted")
+              
+              const { count: totalRepProposals } = await supabase
+                .from("proposals")
+                .select("id", { count: 'exact', head: true })
+                .eq("assigned_rep", user.id)
+              
+              const conversionRate = totalRepProposals && totalRepProposals > 0
+                ? Math.round(((acceptedCount || 0) / totalRepProposals) * 100)
+                : 0
+              
+              // Get last activity timestamp
+              const { data: lastProposal } = await supabase
+                .from("proposals")
+                .select("created_at")
+                .eq("assigned_rep", user.id)
+                .order("created_at", { ascending: false })
+                .limit(1)
+              
+              const lastActivity = lastProposal && lastProposal.length > 0
+                ? new Date(lastProposal[0].created_at).toISOString().split('T')[0]
+                : user.last_sign_in_at 
+                  ? new Date(user.last_sign_in_at).toISOString().split('T')[0]
+                  : new Date(user.created_at).toISOString().split('T')[0]
+              
+              return {
+                ...user,
+                assigned_companies: companiesCount || 0,
+                assigned_proposals: proposalsCount || 0,
+                total_revenue: totalRevenue,
+                conversion_rate: conversionRate,
+                last_activity: lastActivity
+              }
+            })
+          )
+        }
       }
 
       if (data) {
@@ -62,7 +228,7 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
           assignedProposals: user.assigned_proposals || 0,
           totalRevenue: user.total_revenue || 0,
           conversionRate: user.conversion_rate || 0,
-          lastActivity: user.last_activity || new Date().toISOString().split("T")[0],
+          lastActivity: user.last_activity || new Date().toISOString().split('T')[0],
         }));
         setRepresentatives(formattedData);
       }
@@ -78,9 +244,10 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
     }
   }
 
-  // Fetch representatives on component mount
+  // Fetch representatives and stats on component mount
   useEffect(() => {
     fetchRepresentatives()
+    fetchStats()
   }, [])
 
   const filteredRepresentatives = representatives.filter((rep) => {
@@ -95,6 +262,8 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
   const handleAddRepresentative = (newRepresentative: Representative) => {
     // Add the new representative to the list and refresh from server
     fetchRepresentatives()
+    // Also refresh the statistics
+    fetchStats()
   }
 
   const getRoleBadgeColor = (role: string) => {
@@ -108,16 +277,6 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
       default:
         return "outline"
     }
-  }
-
-  const totalStats = {
-    totalRevenue: representatives.reduce((sum, rep) => sum + rep.totalRevenue, 0),
-    totalCompanies: representatives.reduce((sum, rep) => sum + rep.assignedCompanies, 0),
-    totalProposals: representatives.reduce((sum, rep) => sum + rep.assignedProposals, 0),
-    avgConversion: Math.round(
-      representatives.filter((r) => r.conversionRate > 0).reduce((sum, rep) => sum + rep.conversionRate, 0) /
-        Math.max(1, representatives.filter((r) => r.conversionRate > 0).length),
-    ),
   }
 
   return (
@@ -142,8 +301,17 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalStats.totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">This quarter</p>
+            {stats.isLoading ? (
+              <div className="flex items-center">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">From accepted proposals</p>
+              </>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -152,8 +320,17 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalStats.totalCompanies}</div>
-            <p className="text-xs text-muted-foreground">Across all reps</p>
+            {stats.isLoading ? (
+              <div className="flex items-center">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{stats.totalCompanies}</div>
+                <p className="text-xs text-muted-foreground">Across all reps</p>
+              </>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -162,8 +339,17 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalStats.totalProposals}</div>
-            <p className="text-xs text-muted-foreground">In pipeline</p>
+            {stats.isLoading ? (
+              <div className="flex items-center">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{stats.activeProposals}</div>
+                <p className="text-xs text-muted-foreground">With "Sent" status</p>
+              </>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -172,8 +358,17 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalStats.avgConversion}%</div>
-            <p className="text-xs text-muted-foreground">Team average</p>
+            {stats.isLoading ? (
+              <div className="flex items-center">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{stats.avgConversion}%</div>
+                <p className="text-xs text-muted-foreground">Accepted / Total proposals</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -319,35 +514,46 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRepresentatives.map((rep) => (
-                  <TableRow key={rep.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src="/placeholder-user.jpg" alt={rep.name} />
-                          <AvatarFallback className="text-xs">
-                            {rep.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{rep.name}</div>
-                          <div className="text-xs text-gray-500">{rep.email}</div>
-                        </div>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24">
+                      <div className="flex justify-center items-center">
+                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                        <p>Loading performance data...</p>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={getRoleBadgeColor(rep.role)}>{rep.role}</Badge>
-                    </TableCell>
-                    <TableCell>{rep.assignedCompanies}</TableCell>
-                    <TableCell>{rep.assignedProposals}</TableCell>
-                    <TableCell>{rep.totalRevenue > 0 ? `$${rep.totalRevenue.toLocaleString()}` : "N/A"}</TableCell>
-                    <TableCell>{rep.conversionRate > 0 ? `${rep.conversionRate}%` : "N/A"}</TableCell>
-                    <TableCell>{rep.lastActivity}</TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredRepresentatives.map((rep) => (
+                    <TableRow key={rep.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src="/placeholder-user.jpg" alt={rep.name} />
+                            <AvatarFallback className="text-xs">
+                              {rep.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{rep.name}</div>
+                            <div className="text-xs text-gray-500">{rep.email}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getRoleBadgeColor(rep.role)}>{rep.role}</Badge>
+                      </TableCell>
+                      <TableCell>{rep.assignedCompanies || 0}</TableCell>
+                      <TableCell>{rep.assignedProposals || 0}</TableCell>
+                      <TableCell>{rep.totalRevenue > 0 ? `$${rep.totalRevenue.toLocaleString()}` : "$0"}</TableCell>
+                      <TableCell>{`${rep.conversionRate || 0}%`}</TableCell>
+                      <TableCell>{rep.lastActivity || "N/A"}</TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
