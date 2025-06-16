@@ -1,16 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect, useRef } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Phone, Mail, Building2, FileText, Plus, Edit, TrendingUp, X, Loader2 } from "lucide-react"
+import { Search, Phone, Mail, Building2, FileText, Plus, Edit, TrendingUp, X, Loader2, Copy, Trash2 } from "lucide-react"
 import { RepresentativeForm } from "@/components/representative-form"
 import { supabase } from "@/lib/supabaseClient"
 import { useToast } from "@/hooks/use-toast"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 
 interface Representative {
   id: string
@@ -50,6 +52,14 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
     avgConversion: 0,
     isLoading: true
   })
+  const [isEditing, setIsEditing] = useState(false)
+  const [editRepresentative, setEditRepresentative] = useState<Representative | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [showPhoneModal, setShowPhoneModal] = useState<Representative | null>(null)
+  const [showEmailModal, setShowEmailModal] = useState<Representative | null>(null)
+  const [deleteRepresentative, setDeleteRepresentative] = useState<Representative | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deletionError, setDeletionError] = useState<string | null>(null)
   const { toast } = useToast()
 
   // Fetch statistics from Supabase
@@ -266,6 +276,140 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
     fetchStats()
   }
 
+  const handleStartEdit = (rep: Representative) => {
+    setEditRepresentative({...rep})
+    setIsEditing(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editRepresentative) return
+    
+    setIsSaving(true)
+    try {
+      // Prepare data for update
+      const updateData = {
+        email: editRepresentative.email,
+        phone: editRepresentative.phone,
+        role: editRepresentative.role,
+      }
+      
+      // Update in Supabase
+      const { error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', editRepresentative.id)
+      
+      if (error) {
+        console.error("Error updating team member:", error)
+        toast({
+          title: "Error",
+          description: "Failed to update team member: " + error.message,
+          variant: "destructive",
+          duration: 5000,
+        })
+      } else {
+        // Update in local state
+        const updatedRepresentatives = representatives.map(r => 
+          r.id === editRepresentative.id ? editRepresentative : r
+        )
+        setRepresentatives(updatedRepresentatives)
+        
+        toast({
+          title: "Success",
+          description: "Team member updated successfully.",
+          duration: 3000,
+        })
+        
+        setIsEditing(false)
+        setEditRepresentative(null)
+      }
+    } catch (error: any) {
+      console.error("Error in handleSaveEdit:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred: " + (error.message || "Please try again"),
+        variant: "destructive",
+        duration: 5000,
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setEditRepresentative(null)
+  }
+  
+  const handleDeleteRepresentative = async () => {
+    if (!deleteRepresentative) return
+    
+    setIsDeleting(true)
+    try {
+      // Delete the user from the database
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', deleteRepresentative.id)
+      
+      if (error) {
+        console.error("Error deleting team member:", error)
+        
+        // Show error in modal regardless of error type
+        const errorMessage = error?.message || "This team member cannot be deleted. There may be dependencies in proposals or companies.";
+        setDeletionError(errorMessage);
+        setDeleteRepresentative(null);
+      } else {
+        // Remove from local state
+        setRepresentatives(representatives.filter(r => r.id !== deleteRepresentative.id))
+        
+        toast({
+          title: "Success",
+          description: `${deleteRepresentative.name} has been removed from the team.`,
+          variant: "default",
+          duration: 3000,
+        })
+        
+        // Refresh statistics
+        fetchStats()
+      }
+    } catch (error: any) {
+      // Handle any other exceptions
+      console.error("Error in handleDeleteRepresentative:", error)
+      const errorMessage = typeof error === 'object' && error?.message 
+        ? error.message 
+        : "An unexpected error occurred while deleting the team member.";
+      
+      setDeletionError(errorMessage);
+      setDeleteRepresentative(null);
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+  
+  const handleShowPhoneModal = (rep: Representative) => {
+    setShowPhoneModal(rep)
+  }
+  
+  const handleShowEmailModal = (rep: Representative) => {
+    setShowEmailModal(rep)
+  }
+  
+  const copyToClipboard = (text: string, type: 'email' | 'phone') => {
+    navigator.clipboard.writeText(text).then(
+      () => {
+        toast({
+          title: "Copied!",
+          description: `${type === 'email' ? 'Email' : 'Phone number'} copied to clipboard`,
+          duration: 2000,
+        })
+      },
+      (err) => {
+        console.error('Could not copy text: ', err)
+      }
+    )
+  }
+
   const getRoleBadgeColor = (role: string) => {
     switch (role.toLowerCase()) {
       case "admin":
@@ -476,14 +620,22 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
 
                 {userRole === "Admin" && (
                   <div className="flex gap-2 pt-2">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleStartEdit(rep)}>
                       <Edit className="mr-2 h-3 w-3" />
                       Edit
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={(e) => handleShowEmailModal(rep)}
+                    >
                       <Mail className="h-3 w-3" />
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={(e) => handleShowPhoneModal(rep)}
+                    >
                       <Phone className="h-3 w-3" />
                     </Button>
                   </div>
@@ -511,6 +663,7 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
                   <TableHead>Revenue</TableHead>
                   <TableHead>Conversion</TableHead>
                   <TableHead>Last Activity</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -551,6 +704,29 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
                       <TableCell>{rep.totalRevenue > 0 ? `$${rep.totalRevenue.toLocaleString()}` : "$0"}</TableCell>
                       <TableCell>{`${rep.conversionRate || 0}%`}</TableCell>
                       <TableCell>{rep.lastActivity || "N/A"}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleStartEdit(rep)} className="h-8 w-8 p-0">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleShowEmailModal(rep)} className="h-8 w-8 p-0">
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleShowPhoneModal(rep)} className="h-8 w-8 p-0">
+                            <Phone className="h-4 w-4" />
+                          </Button>
+                          {userRole === "Admin" && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => setDeleteRepresentative(rep)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -567,6 +743,255 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
           onSubmit={handleAddRepresentative}
           userRole={userRole}
         />
+      )}
+      
+      {/* Edit Representative Modal */}
+      {isEditing && editRepresentative && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Edit Team Member</CardTitle>
+                  <CardDescription>Update {editRepresentative.name}'s information</CardDescription>
+                </div>
+                <Button variant="ghost" onClick={handleCancelEdit}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  value={editRepresentative.name}
+                  disabled
+                  className="bg-gray-50"
+                />
+                <p className="text-xs text-gray-500">Name cannot be changed</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={editRepresentative.email}
+                    onChange={(e) => setEditRepresentative({...editRepresentative, email: e.target.value})}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={editRepresentative.phone}
+                    onChange={(e) => setEditRepresentative({...editRepresentative, phone: e.target.value})}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <Select
+                  value={editRepresentative.role}
+                  onValueChange={(value: "rep" | "manager" | "admin") =>
+                    setEditRepresentative({...editRepresentative, role: value})
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rep">Sales Representative</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between border-t p-6">
+              <Button variant="outline" onClick={handleCancelEdit} disabled={isSaving}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+      
+      {/* Phone Modal */}
+      {showPhoneModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Phone className="mr-2 h-5 w-5" />
+                  <CardTitle>Phone Number</CardTitle>
+                </div>
+                <Button variant="ghost" onClick={() => setShowPhoneModal(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <p className="text-lg font-medium">{showPhoneModal.phone || "No phone number"}</p>
+                {showPhoneModal.phone && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => copyToClipboard(showPhoneModal.phone, 'phone')}
+                  >
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      
+      {/* Email Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Mail className="mr-2 h-5 w-5" />
+                  <CardTitle>Email Address</CardTitle>
+                </div>
+                <Button variant="ghost" onClick={() => setShowEmailModal(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <p className="text-lg font-medium break-all">{showEmailModal.email}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => copyToClipboard(showEmailModal.email, 'email')}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      {deleteRepresentative && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Confirm Deletion</CardTitle>
+              <CardDescription>
+                Are you sure you want to delete {deleteRepresentative.name}? This action cannot be undone.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p><span className="font-medium">Email:</span> {deleteRepresentative.email}</p>
+                <p><span className="font-medium">Role:</span> {deleteRepresentative.role}</p>
+              </div>
+            </CardContent>
+            <div className="flex justify-end gap-2 p-6 pt-0">
+              <Button 
+                variant="outline" 
+                onClick={() => setDeleteRepresentative(null)} 
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleDeleteRepresentative}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+      
+      {/* Deletion Error Modal */}
+      {deletionError && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="bg-red-100 p-2 rounded-full">
+                  <X className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <CardTitle>Unable to Delete Team Member</CardTitle>
+                  <CardDescription>
+                    The operation could not be completed
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
+                  <p className="text-sm text-amber-800">
+                    {deletionError.includes("foreign key constraint") ? 
+                      "This team member has dependencies in other tables (proposals or companies) and cannot be deleted until those references are removed." :
+                      deletionError}
+                  </p>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium mb-2">What to do next:</h4>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <li>Check if this team member is assigned to any proposals</li>
+                    <li>Check if this team member is assigned to any companies</li>
+                    <li>Reassign or remove these assignments first</li>
+                    <li>Try deleting the team member again</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button onClick={() => setDeletionError(null)}>
+                Dismiss
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
       )}
     </div>
   )

@@ -12,7 +12,7 @@ import { ProposalsView } from "@/components/proposals-view"
 import { ActivitiesView } from "@/components/activities-view"
 import { RepresentativesView } from "@/components/representatives-view"
 import { supabase } from "@/lib/supabaseClient"
-import { startOfMonth, endOfMonth } from "date-fns"
+import { startOfMonth, endOfMonth, subMonths } from "date-fns"
 
 interface User {
   email: string
@@ -25,6 +25,7 @@ interface StatsData {
   activeProposals: string;
   monthlyRevenue: string;
   conversionRate: string;
+  conversionChange: string;
 }
 
 export default function Dashboard() {
@@ -34,7 +35,8 @@ export default function Dashboard() {
     totalCompanies: "0",
     activeProposals: "0",
     monthlyRevenue: "$0K",
-    conversionRate: "68%", // Keeping this static as requested
+    conversionRate: "0%",
+    conversionChange: "0%"
   })
   const [isLoading, setIsLoading] = useState(true)
 
@@ -86,12 +88,57 @@ export default function Dashboard() {
         // Format the revenue as $XK
         const formattedRevenue = `$${Math.round(totalRevenue / 1000)}K`
         
+        // Calculate conversion rate for current month
+        const { data: currentMonthData, error: currentMonthError } = await supabase
+          .from('proposals')
+          .select('status')
+          .neq('status', 'Draft')
+          .gte('created_at', firstDayOfMonth.toISOString())
+          .lte('created_at', lastDayOfMonth.toISOString())
+          
+        if (currentMonthError) throw currentMonthError
+        
+        // Calculate previous month's data for comparison
+        const prevMonthStart = startOfMonth(subMonths(now, 1))
+        const prevMonthEnd = endOfMonth(subMonths(now, 1))
+        
+        const { data: prevMonthData, error: prevMonthError } = await supabase
+          .from('proposals')
+          .select('status')
+          .neq('status', 'Draft')
+          .gte('created_at', prevMonthStart.toISOString())
+          .lte('created_at', prevMonthEnd.toISOString())
+          
+        if (prevMonthError) throw prevMonthError
+        
+        // Calculate current month conversion rate
+        const currentTotalProposals = currentMonthData.length
+        const currentAccepted = currentMonthData.filter(p => p.status === 'Accepted').length
+        const currentRate = currentTotalProposals > 0 
+          ? Math.round((currentAccepted / currentTotalProposals) * 100) 
+          : 0
+        
+        // Calculate previous month conversion rate
+        const prevTotalProposals = prevMonthData.length
+        const prevAccepted = prevMonthData.filter(p => p.status === 'Accepted').length
+        const prevRate = prevTotalProposals > 0 
+          ? Math.round((prevAccepted / prevTotalProposals) * 100)
+          : 0
+        
+        // Calculate change (can be positive or negative)
+        const rateChange = prevRate > 0 
+          ? currentRate - prevRate
+          : 0
+        
+        const changePrefix = rateChange >= 0 ? '+' : ''
+        
         // Update stats data
         setStatsData({
           totalCompanies: String(companiesCount || 0),
           activeProposals: String(proposalsCount || 0),
           monthlyRevenue: totalRevenue ? formattedRevenue : "$0K",
-          conversionRate: "68%", // Keeping this static as requested
+          conversionRate: `${currentRate}%`,
+          conversionChange: `${changePrefix}${rateChange}%`
         })
       } catch (error) {
         console.error("Error fetching dashboard stats:", error)
@@ -129,8 +176,8 @@ export default function Dashboard() {
     },
     {
       title: "Conversion Rate",
-      value: statsData.conversionRate, // Static value
-      change: "+5%",
+      value: isLoading ? "Loading..." : statsData.conversionRate,
+      change: statsData.conversionChange + " from last month",
       icon: Target,
       color: "text-orange-600",
     },

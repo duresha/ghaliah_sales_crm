@@ -1,14 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Activity, Search, Phone, Mail, FileText, Bell, Plus, Calendar } from "lucide-react"
+import { Activity, Search, Phone, Mail, FileText, Bell, Plus, Calendar, X, Loader2 } from "lucide-react"
 import { ActivityForm } from "@/components/activity-form"
+import { Textarea } from "@/components/ui/textarea"
 
 interface ActivityRecord {
   id: string
@@ -22,6 +23,32 @@ interface ActivityRecord {
   autoTriggered: boolean
   timestamp: string
 }
+
+// Sample companies and proposals for dropdowns
+const sampleCompanies = [
+  "TechCorp Solutions",
+  "Global Manufacturing Inc",
+  "Financial Services Co",
+  "Healthcare Systems Ltd",
+  "Retail Innovations",
+  "Education Tech Ltd",
+  "Logistics Pro"
+];
+
+const sampleProposals = [
+  "PROP-2024-001",
+  "PROP-2024-002",
+  "PROP-2024-003",
+  "PROP-2024-004",
+  "PROP-2024-005"
+];
+
+const sampleReps = [
+  "Ahmed Al-Rashid",
+  "Sarah Al-Mahmoud",
+  "Mohammed Al-Zahra",
+  "Fatima Al-Qasimi"
+];
 
 const sampleActivities: ActivityRecord[] = [
   {
@@ -94,6 +121,10 @@ export function ActivitiesView({ userRole }: ActivitiesViewProps) {
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [repFilter, setRepFilter] = useState<string>("all")
   const [autoFilter, setAutoFilter] = useState<string>("all")
+  const [selectedActivity, setSelectedActivity] = useState<ActivityRecord | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedActivity, setEditedActivity] = useState<ActivityRecord | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   const filteredActivities = activities.filter((activity) => {
     const matchesSearch =
@@ -141,6 +172,47 @@ export function ActivitiesView({ userRole }: ActivitiesViewProps) {
       default:
         return "text-gray-600"
     }
+  }
+
+  const formatTimestamp = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return "Invalid time";
+    }
+  }
+
+  const handleStartEditing = () => {
+    if (selectedActivity) {
+      setEditedActivity({...selectedActivity});
+      setIsEditing(true);
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedActivity(null);
+  }
+
+  const handleSaveEdit = () => {
+    if (!editedActivity) return;
+    
+    setIsSaving(true);
+    
+    // Simulate API call with timeout
+    setTimeout(() => {
+      // Update the activity in the activities array
+      const updatedActivities = activities.map(activity => 
+        activity.id === editedActivity.id ? editedActivity : activity
+      );
+      
+      setActivities(updatedActivities);
+      setSelectedActivity(editedActivity);
+      setIsEditing(false);
+      setEditedActivity(null);
+      setIsSaving(false);
+    }, 500);
   }
 
   const uniqueReps = [...new Set(activities.map((a) => a.rep))]
@@ -256,7 +328,7 @@ export function ActivitiesView({ userRole }: ActivitiesViewProps) {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedActivity(activity)}>
                       View
                     </Button>
                   </TableCell>
@@ -314,6 +386,187 @@ export function ActivitiesView({ userRole }: ActivitiesViewProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Activity View Modal */}
+      {selectedActivity && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const IconComponent = getActivityIcon(selectedActivity.activityType);
+                    return <IconComponent className={`h-5 w-5 ${getActivityColor(selectedActivity.activityType)}`} />;
+                  })()}
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      {selectedActivity.activityType}
+                      <Badge variant={selectedActivity.autoTriggered ? "secondary" : "outline"} className="ml-2">
+                        {selectedActivity.autoTriggered ? "Automated" : "Manual"}
+                      </Badge>
+                    </CardTitle>
+                    <CardDescription>{selectedActivity.activityId}</CardDescription>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {!isEditing && (userRole === "Admin" || userRole === "Manager") && (
+                    <Button variant="outline" onClick={handleStartEditing}>
+                      Edit
+                    </Button>
+                  )}
+                  <Button variant="ghost" onClick={() => {
+                    setSelectedActivity(null);
+                    setIsEditing(false);
+                    setEditedActivity(null);
+                  }}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Company</label>
+                  {isEditing ? (
+                    <Select 
+                      value={editedActivity?.company} 
+                      onValueChange={(value) => {
+                        setEditedActivity(prev => prev ? {...prev, company: value} : null);
+                      }}
+                    >
+                      <SelectTrigger className="mt-1 h-9">
+                        <SelectValue placeholder="Select company" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sampleCompanies.map((company) => (
+                          <SelectItem key={company} value={company}>
+                            {company}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm font-semibold">{selectedActivity.company}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Date & Time</label>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <span>{selectedActivity.date}</span>
+                    <span className="text-gray-500">at {formatTimestamp(selectedActivity.timestamp)}</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Related Proposal</label>
+                  {isEditing ? (
+                    <Select 
+                      value={editedActivity?.proposal || "none"} 
+                      onValueChange={(value) => {
+                        setEditedActivity(prev => prev ? {
+                          ...prev, 
+                          proposal: value === "none" ? undefined : value
+                        } : null);
+                      }}
+                    >
+                      <SelectTrigger className="mt-1 h-9">
+                        <SelectValue placeholder="Select proposal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {sampleProposals.map((proposal) => (
+                          <SelectItem key={proposal} value={proposal}>
+                            {proposal}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm">{selectedActivity.proposal || "None"}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Representative</label>
+                  {isEditing ? (
+                    <Select 
+                      value={editedActivity?.rep} 
+                      onValueChange={(value) => {
+                        setEditedActivity(prev => prev ? {...prev, rep: value} : null);
+                      }}
+                    >
+                      <SelectTrigger className="mt-1 h-9">
+                        <SelectValue placeholder="Select representative" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sampleReps.map((rep) => (
+                          <SelectItem key={rep} value={rep}>
+                            {rep}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm">{selectedActivity.rep}</p>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium">Description</label>
+                {isEditing ? (
+                  <Textarea 
+                    className="mt-2"
+                    value={editedActivity?.description || ""}
+                    onChange={(e) => {
+                      setEditedActivity(prev => prev ? {...prev, description: e.target.value} : null);
+                    }}
+                    rows={3}
+                  />
+                ) : (
+                  <div className="mt-2 p-3 bg-gray-50 rounded-md border text-sm">
+                    {selectedActivity.description}
+                  </div>
+                )}
+              </div>
+              
+              {!isEditing && (
+                <div className="pt-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Activity className="h-4 w-4" />
+                    <span>
+                      {selectedActivity.autoTriggered 
+                        ? "This activity was automatically generated by the system." 
+                        : "This activity was manually recorded."}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+            
+            {isEditing && (
+              <CardFooter className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={handleCancelEdit} disabled={isSaving}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveEdit} disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </CardFooter>
+            )}
+          </Card>
+        </div>
+      )}
+      
       {showActivityForm && (
         <ActivityForm onClose={() => setShowActivityForm(false)} onSubmit={handleAddActivity} userRole={userRole} />
       )}

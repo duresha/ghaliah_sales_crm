@@ -80,14 +80,15 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={toggleLanguage}>
+              {/* //TODO: Add language toggle  and Notification bell*/}
+              {/* <Button variant="ghost" size="sm" onClick={toggleLanguage}>
                 <Globe className="h-4 w-4 mr-2" />
                 {language === "en" ? "العربية" : "English"}
               </Button>
 
               <Button variant="ghost" size="icon">
                 <Bell className="h-4 w-4" />
-              </Button>
+              </Button> */}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -121,14 +122,15 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  {/* //TODO: Add profile and settings */}
+                  {/* <DropdownMenuItem>
                     <LucideUser className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> */}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
