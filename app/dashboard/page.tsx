@@ -46,6 +46,19 @@ export default function Dashboard() {
     role: (session?.user as any)?.role || "Rep",
   }
 
+  // Update document title based on active tab
+  useEffect(() => {
+    const titles = {
+      overview: "Overview Dashboard | Ghaliah",
+      companies: "Manage Companies and Leads | Ghaliah",
+      proposals: "Create and Manage Proposals | Ghaliah",
+      activities: "Log and Track Activities | Ghaliah",
+      representatives: "View Team Performance | Ghaliah"
+    };
+    
+    document.title = titles[activeTab as keyof typeof titles] || titles.overview;
+  }, [activeTab]);
+
   useEffect(() => {
     async function fetchStats() {
       setIsLoading(true)

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Phone, Mail, Building2, FileText, Plus, Edit, TrendingUp, X, Loader2, Copy, Trash2 } from "lucide-react"
+import { Search, Phone, Mail, Building2, FileText, Plus, Edit, TrendingUp, X, Loader2, Copy, Trash2, Info } from "lucide-react"
 import { RepresentativeForm } from "@/components/representative-form"
 import { supabase } from "@/lib/supabaseClient"
 import { useToast } from "@/hooks/use-toast"
@@ -57,6 +57,7 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [showPhoneModal, setShowPhoneModal] = useState<Representative | null>(null)
   const [showEmailModal, setShowEmailModal] = useState<Representative | null>(null)
+  const [showContactInfoModal, setShowContactInfoModal] = useState<Representative | null>(null)
   const [deleteRepresentative, setDeleteRepresentative] = useState<Representative | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deletionError, setDeletionError] = useState<string | null>(null)
@@ -627,16 +628,9 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={(e) => handleShowEmailModal(rep)}
+                      onClick={() => setShowContactInfoModal(rep)}
                     >
-                      <Mail className="h-3 w-3" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={(e) => handleShowPhoneModal(rep)}
-                    >
-                      <Phone className="h-3 w-3" />
+                      <Info className="h-3 w-3" />
                     </Button>
                   </div>
                 )}
@@ -709,11 +703,8 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
                           <Button variant="ghost" size="sm" onClick={() => handleStartEdit(rep)} className="h-8 w-8 p-0">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleShowEmailModal(rep)} className="h-8 w-8 p-0">
-                            <Mail className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleShowPhoneModal(rep)} className="h-8 w-8 p-0">
-                            <Phone className="h-4 w-4" />
+                          <Button variant="ghost" size="sm" onClick={() => setShowContactInfoModal(rep)} className="h-8 w-8 p-0">
+                            <Info className="h-4 w-4" />
                           </Button>
                           {userRole === "Admin" && (
                             <Button 
@@ -838,66 +829,55 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
         </div>
       )}
       
-      {/* Phone Modal */}
-      {showPhoneModal && (
+      {/* Contact Info Modal */}
+      {showContactInfoModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-md">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Phone className="mr-2 h-5 w-5" />
-                  <CardTitle>Phone Number</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Info className="h-5 w-5" />
+                  <div>
+                    <CardTitle>Contact Information</CardTitle>
+                    <CardDescription>{showContactInfoModal.name}</CardDescription>
+                  </div>
                 </div>
-                <Button variant="ghost" onClick={() => setShowPhoneModal(null)}>
+                <Button variant="ghost" onClick={() => setShowContactInfoModal(null)}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <p className="text-lg font-medium">{showPhoneModal.phone || "No phone number"}</p>
-                {showPhoneModal.phone && (
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Email Address</label>
+                <div className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+                  <p className="text-sm font-medium break-all">{showContactInfoModal.email}</p>
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => copyToClipboard(showPhoneModal.phone, 'phone')}
+                    onClick={() => copyToClipboard(showContactInfoModal.email, 'email')}
                   >
                     <Copy className="mr-2 h-4 w-4" />
                     Copy
                   </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-      
-      {/* Email Modal */}
-      {showEmailModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Mail className="mr-2 h-5 w-5" />
-                  <CardTitle>Email Address</CardTitle>
                 </div>
-                <Button variant="ghost" onClick={() => setShowEmailModal(null)}>
-                  <X className="h-4 w-4" />
-                </Button>
               </div>
-            </CardHeader>
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <p className="text-lg font-medium break-all">{showEmailModal.email}</p>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => copyToClipboard(showEmailModal.email, 'email')}
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy
-                </Button>
+              
+              <div>
+                <label className="text-sm font-medium mb-1 block">Phone Number</label>
+                <div className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+                  <p className="text-sm font-medium">{showContactInfoModal.phone || "No phone number"}</p>
+                  {showContactInfoModal.phone && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => copyToClipboard(showContactInfoModal.phone, 'phone')}
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
