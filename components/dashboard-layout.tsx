@@ -3,7 +3,7 @@
 import type React from "react"
 import Image from "next/image"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -31,9 +31,36 @@ interface DashboardLayoutProps {
   user: UserProps
 }
 
+// Function to generate consistent gradient colors based on user email
+function generateGradientColors(email: string): [string, string] {
+  // Simple hash function to get a deterministic but unique value from the email
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = email.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  // Generate two colors with good contrast
+  const hue1 = Math.abs(hash % 360);
+  const hue2 = (hue1 + 40 + Math.abs((hash >> 8) % 180)) % 360; // Offset by at least 40 degrees
+  
+  const saturation = 70 + Math.abs((hash >> 4) % 30); // 70-100%
+  const lightness = 55 + Math.abs((hash >> 6) % 15); // 55-70%
+  
+  return [
+    `hsl(${hue1}, ${saturation}%, ${lightness}%)`,
+    `hsl(${hue2}, ${saturation}%, ${lightness}%)`
+  ];
+}
+
 export function DashboardLayout({ children, user }: DashboardLayoutProps) {
   const [language, setLanguage] = useState<"en" | "ar">("en")
   const router = useRouter()
+
+  // Generate gradient colors based on user email
+  const gradientColors = useMemo(() => 
+    generateGradientColors(user.email),
+    [user.email]
+  );
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/" })
@@ -94,15 +121,15 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage
-                        src={
-                          user.email
-                            ? `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=3b82f6&color=fff`
-                            : "/placeholder-user.jpg"
-                        }
-                        alt={user.name}
-                      />
-                      <AvatarFallback>
+                      <AvatarFallback 
+                        style={{
+                          backgroundImage: `linear-gradient(45deg, ${gradientColors[0]}, ${gradientColors[1]})`,
+                          backgroundSize: '300% 300%',
+                          animation: 'gradient-wave 8s ease infinite',
+                          color: 'white',
+                          fontWeight: 'bold',
+                        }}
+                      >
                         {user.name
                           .split(" ")
                           .map((n) => n[0])
@@ -144,6 +171,21 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
+
+      {/* Global styles for gradient animation */}
+      <style jsx global>{`
+        @keyframes gradient-wave {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+      `}</style>
     </div>
   )
 }

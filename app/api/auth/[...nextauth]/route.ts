@@ -33,6 +33,7 @@ const handler = NextAuth({
             { id: "1", email: "admin@ghaliah.com", password: "admin123", role: "Admin", name: "Admin User" },
             { id: "2", email: "manager@ghaliah.com", password: "manager123", role: "Manager", name: "Manager User" },
             { id: "3", email: "rep@ghaliah.com", password: "rep123", role: "Rep", name: "Rep User" },
+            { id: "4", email: "realshafiqahmed@gmail.com", password: "rep1122", role: "Admin", name: "Nomi Madueke" }
           ]
 
           const user = demoUsers.find((u) => u.email === credentials.email && u.password === credentials.password)
