@@ -373,6 +373,9 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
         
         // Refresh statistics
         fetchStats()
+        
+        // Close the delete confirmation modal
+        setDeleteRepresentative(null)
       }
     } catch (error: any) {
       // Handle any other exceptions
