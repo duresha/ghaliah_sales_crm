@@ -31,7 +31,7 @@ const handler = NextAuth({
           // Demo authentication logic
           const demoUsers = [
             { id: "1", email: "rawan@gmail.com", password: "admin@123", role: "Admin", name: "Rawan" },
-            { id: "2", email: "rawam_manager@gmail.com", password: "manager@123", role: "Manager", name: "Rawan User" },
+            { id: "2", email: "rawam_manager@gmail.com", password: "manager@123", role: "Manager", name: "Rawan Manager" },
             { id: "3", email: "rep@gmail.com", password: "rep@123", role: "Rep", name: "Nomi Madvaki" },
           ]
 
