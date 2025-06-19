@@ -214,7 +214,7 @@ export default function LoginPage() {
             </Tabs>
 
             <div className="mt-6 text-center text-xs text-gray-600">
-              <p className="font-medium">Test Accounts:</p>
+              <p className="font-medium">Accounts:</p>
               <p>rawan@gmail.com / admin@123</p>
               <p>rawam_manager@gmail.com / manager@123</p>
               <p>rep@gmail.com / rep@123</p>
