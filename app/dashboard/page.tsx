@@ -99,7 +99,7 @@ export default function Dashboard() {
         }, 0)
         
         // Format the revenue as $XK
-        const formattedRevenue = `$${Math.round(totalRevenue / 1000)}K`
+        const formattedRevenue = `KWD ${Math.round(totalRevenue / 1000)}K`
         
         // Calculate conversion rate for current month
         const { data: currentMonthData, error: currentMonthError } = await supabase
@@ -169,28 +169,28 @@ export default function Dashboard() {
     {
       title: "Total Companies",
       value: isLoading ? "Loading..." : statsData.totalCompanies,
-      change: "+12%",
+      change: "All registered clients",
       icon: Building2,
       color: "text-blue-600",
     },
     {
       title: "Active Proposals",
       value: isLoading ? "Loading..." : statsData.activeProposals,
-      change: "+8%",
+      change: "Sent + Accepted proposals",
       icon: FileText,
       color: "text-green-600",
     },
     {
       title: "Active Proposals Revenue",
       value: isLoading ? "Loading..." : statsData.monthlyRevenue,
-      change: "+23%",
+      change: "Sum of active values",
       icon: DollarSign,
       color: "text-purple-600",
     },
     {
       title: "Conversion Rate",
       value: isLoading ? "Loading..." : statsData.conversionRate,
-      change: statsData.conversionChange + " from last month",
+      change: "Accepted / Total proposals",
       icon: Target,
       color: "text-orange-600",
     },
@@ -226,7 +226,7 @@ export default function Dashboard() {
                   <CardContent>
                     <div className="text-2xl font-bold">{stat.value}</div>
                     <p className="text-xs text-muted-foreground">
-                      <span className="text-green-600">{stat.change}</span> from last month
+                      {stat.change}
                     </p>
                   </CardContent>
                 </Card>

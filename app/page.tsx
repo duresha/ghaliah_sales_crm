@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Mail, Lock } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { SparklesCore } from "@/components/ui/sparkles"
 
 export default function LoginPage() {
   const { data: session, status } = useSession()
@@ -94,8 +95,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md mx-auto">
+    <div className="min-h-screen bg-slate-950 relative flex items-center justify-center p-4 overflow-hidden">
+      {/* Sparkles Background */}
+      <div className="w-full absolute inset-0 h-screen">
+        <SparklesCore
+          id="tsparticlesfullpage"
+          background="transparent"
+          minSize={0.6}
+          maxSize={1.4}
+          particleDensity={100}
+          className="w-full h-full"
+          particleColor="#FFFFFF"
+          speed={1}
+        />
+      </div>
+      
+      {/* Login Card */}
+      <Card className="w-full max-w-md mx-auto relative z-10">
         <CardHeader className="text-center">
           <div className="flex flex-col items-center justify-center mb-4">
             <Image 
@@ -178,10 +194,10 @@ export default function LoginPage() {
           </Tabs>
 
           <div className="mt-6 text-center text-sm text-gray-600">
-            <p>Demo Accounts:</p>
-            <p>admin@ghaliah.com / admin123</p>
-            <p>manager@ghaliah.com / manager123</p>
-            <p>rep@ghaliah.com / rep123</p>
+            <p>Accounts:</p>
+            <p>rawan@gmail.com / admin@123</p>
+            <p>rawam_manager@gmail.com / manager@123</p>
+            <p>rep@gmail.com / rep@123</p>
           </div>
         </CardContent>
       </Card>
