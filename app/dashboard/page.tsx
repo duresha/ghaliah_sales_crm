@@ -34,7 +34,7 @@ export default function Dashboard() {
   const [statsData, setStatsData] = useState<StatsData>({
     totalCompanies: "0",
     activeProposals: "0",
-    monthlyRevenue: "$0K",
+    monthlyRevenue: "KWD 0",
     conversionRate: "0%",
     conversionChange: "0%"
   })
@@ -98,8 +98,14 @@ export default function Dashboard() {
           return sum + (proposal.total_price || 0)
         }, 0)
         
-        // Format the revenue as $XK
-        const formattedRevenue = `KWD ${Math.round(totalRevenue / 1000)}K`
+        // Format the revenue 
+        // Only use suffixes for values over 7 digits
+        let formattedRevenue;
+        if (totalRevenue >= 10000000) { // 10 million+
+          formattedRevenue = `KWD ${(Math.round(totalRevenue / 1000000)).toLocaleString()}M`;
+        } else {
+          formattedRevenue = `KWD ${Math.round(totalRevenue).toLocaleString()}`;
+        }
         
         // Calculate conversion rate for current month
         const { data: currentMonthData, error: currentMonthError } = await supabase
@@ -149,7 +155,7 @@ export default function Dashboard() {
         setStatsData({
           totalCompanies: String(companiesCount || 0),
           activeProposals: String(proposalsCount || 0),
-          monthlyRevenue: totalRevenue ? formattedRevenue : "$0K",
+          monthlyRevenue: totalRevenue ? formattedRevenue : "KWD 0",
           conversionRate: `${currentRate}%`,
           conversionChange: `${changePrefix}${rateChange}%`
         })
@@ -169,9 +175,11 @@ export default function Dashboard() {
     {
       title: "Total Companies",
       value: isLoading ? "Loading..." : statsData.totalCompanies,
-      change: "All registered clients",
+      change: "All registered clients and leads",
       icon: Building2,
       color: "text-blue-600",
+      cardClass: "stats-card-blue",
+      iconClass: "stats-card-icon-blue"
     },
     {
       title: "Active Proposals",
@@ -179,20 +187,26 @@ export default function Dashboard() {
       change: "Sent + Accepted proposals",
       icon: FileText,
       color: "text-green-600",
+      cardClass: "stats-card-green",
+      iconClass: "stats-card-icon-green"
     },
     {
       title: "Active Proposals Revenue",
       value: isLoading ? "Loading..." : statsData.monthlyRevenue,
-      change: "Sum of active values",
+      change: "Sum of active proposal values",
       icon: DollarSign,
       color: "text-purple-600",
+      cardClass: "stats-card-purple",
+      iconClass: "stats-card-icon-purple"
     },
     {
       title: "Conversion Rate",
       value: isLoading ? "Loading..." : statsData.conversionRate,
-      change: "Accepted / Total proposals",
+      change: `Accepted / Total proposals (${statsData.conversionChange} change)`,
       icon: Target,
-      color: "text-orange-600",
+      color: "text-amber-600",
+      cardClass: "stats-card-amber",
+      iconClass: "stats-card-icon-amber"
     },
   ]
 
@@ -207,21 +221,50 @@ export default function Dashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="companies">Companies</TabsTrigger>
-            <TabsTrigger value="proposals">Proposals</TabsTrigger>
-            <TabsTrigger value="activities">Activities</TabsTrigger>
-            {user.role !== "Rep" && <TabsTrigger value="representatives">Team</TabsTrigger>}
+          <TabsList className="grid w-full grid-cols-5 p-1 rounded-xl tabs-glassmorphism">
+            <TabsTrigger 
+              value="overview" 
+              className={`rounded-lg px-4 py-2.5 transition-all duration-200 ${activeTab === "overview" ? "tab-trigger-active" : "tab-trigger-glassmorphism"}`}
+            >
+              Overview
+            </TabsTrigger>
+            <TabsTrigger 
+              value="companies" 
+              className={`rounded-lg px-4 py-2.5 transition-all duration-200 ${activeTab === "companies" ? "tab-trigger-active" : "tab-trigger-glassmorphism"}`}
+            >
+              Companies
+            </TabsTrigger>
+            <TabsTrigger 
+              value="proposals" 
+              className={`rounded-lg px-4 py-2.5 transition-all duration-200 ${activeTab === "proposals" ? "tab-trigger-active" : "tab-trigger-glassmorphism"}`}
+            >
+              Proposals
+            </TabsTrigger>
+            <TabsTrigger 
+              value="activities" 
+              className={`rounded-lg px-4 py-2.5 transition-all duration-200 ${activeTab === "activities" ? "tab-trigger-active" : "tab-trigger-glassmorphism"}`}
+            >
+              Activities
+            </TabsTrigger>
+            {user.role !== "Rep" && (
+              <TabsTrigger 
+                value="representatives" 
+                className={`rounded-lg px-4 py-2.5 transition-all duration-200 ${activeTab === "representatives" ? "tab-trigger-active" : "tab-trigger-glassmorphism"}`}
+              >
+                Team
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {stats.map((stat, index) => (
-                <Card key={index}>
+                <Card key={index} className={stat.cardClass}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                    <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                    <div className={stat.iconClass}>
+                      <stat.icon className="h-4 w-4" />
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{stat.value}</div>
@@ -234,21 +277,23 @@ export default function Dashboard() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
+              <Card className="info-card">
+                <CardHeader className="info-card-header">
+                  <CardTitle className="info-card-title">
+                    <div className="info-card-icon">
+                      <Clock className="h-5 w-5" />
+                    </div>
                     Recent Activities
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="info-card-content">
                   {[
                     { company: "TechCorp Ltd", action: "Proposal sent", time: "2 hours ago", status: "success" },
                     { company: "Global Industries", action: "Follow-up call", time: "4 hours ago", status: "pending" },
                     { company: "StartupXYZ", action: "Meeting scheduled", time: "1 day ago", status: "info" },
                     { company: "Enterprise Co", action: "Proposal accepted", time: "2 days ago", status: "success" },
                   ].map((activity, index) => (
-                    <div key={index} className="flex items-center justify-between">
+                    <div key={index} className={`info-card-item info-card-item-${activity.status}`}>
                       <div>
                         <p className="font-medium">{activity.company}</p>
                         <p className="text-sm text-gray-600">{activity.action}</p>
@@ -272,14 +317,16 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
+              <Card className="info-card">
+                <CardHeader className="info-card-header">
+                  <CardTitle className="info-card-title">
+                    <div className="info-card-icon">
+                      <Calendar className="h-5 w-5" />
+                    </div>
                     Upcoming Reminders
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="info-card-content">
                   {[
                     { company: "MegaCorp", task: "Follow-up on proposal", date: "Today, 3:00 PM", priority: "high" },
                     {
@@ -296,7 +343,7 @@ export default function Dashboard() {
                       priority: "high",
                     },
                   ].map((reminder, index) => (
-                    <div key={index} className="flex items-center justify-between">
+                    <div key={index} className={`info-card-item info-card-item-${reminder.priority}`}>
                       <div>
                         <p className="font-medium">{reminder.company}</p>
                         <p className="text-sm text-gray-600">{reminder.task}</p>

@@ -417,136 +417,136 @@ export function CompanyForm({ onClose, onSubmit, userRole }: CompanyFormProps) {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
                   <div className="md:border-r p-4">
                     <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="High Priority"
-                          checked={formData.tags.includes("High Priority")}
-                          onCheckedChange={() => handleTagToggle("High Priority")}
-                        />
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="High Priority"
+                        checked={formData.tags.includes("High Priority")}
+                        onCheckedChange={() => handleTagToggle("High Priority")}
+                      />
                         <Label htmlFor="High Priority" className="text-xs">
                           High
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="Medium Priority"
-                          checked={formData.tags.includes("Medium Priority")}
-                          onCheckedChange={() => handleTagToggle("Medium Priority")}
-                        />
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Medium Priority"
+                        checked={formData.tags.includes("Medium Priority")}
+                        onCheckedChange={() => handleTagToggle("Medium Priority")}
+                      />
                         <Label htmlFor="Medium Priority" className="text-xs">
                           Medium
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="Low Priority"
-                          checked={formData.tags.includes("Low Priority")}
-                          onCheckedChange={() => handleTagToggle("Low Priority")}
-                        />
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Low Priority"
+                        checked={formData.tags.includes("Low Priority")}
+                        onCheckedChange={() => handleTagToggle("Low Priority")}
+                      />
                         <Label htmlFor="Low Priority" className="text-xs">
                           Low
-                        </Label>
+                      </Label>
                       </div>
-                    </div>
                   </div>
-                  
+                </div>
+                
                   <div className="md:border-r p-4">
                     <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="Large Company"
-                          checked={formData.tags.includes("Large Company")}
-                          onCheckedChange={() => handleTagToggle("Large Company")}
-                        />
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Large Company"
+                        checked={formData.tags.includes("Large Company")}
+                        onCheckedChange={() => handleTagToggle("Large Company")}
+                      />
                         <Label htmlFor="Large Company" className="text-xs">
                           Large
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="SME"
-                          checked={formData.tags.includes("SME")}
-                          onCheckedChange={() => handleTagToggle("SME")}
-                        />
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="SME"
+                        checked={formData.tags.includes("SME")}
+                        onCheckedChange={() => handleTagToggle("SME")}
+                      />
                         <Label htmlFor="SME" className="text-xs">
-                          SME
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="Government"
-                          checked={formData.tags.includes("Government")}
-                          onCheckedChange={() => handleTagToggle("Government")}
-                        />
+                        SME
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Government"
+                        checked={formData.tags.includes("Government")}
+                        onCheckedChange={() => handleTagToggle("Government")}
+                      />
                         <Label htmlFor="Government" className="text-xs">
                           Gov
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="Private"
-                          checked={formData.tags.includes("Private")}
-                          onCheckedChange={() => handleTagToggle("Private")}
-                        />
-                        <Label htmlFor="Private" className="text-xs">
-                          Private
-                        </Label>
-                      </div>
+                      </Label>
                     </div>
-                  </div>
-                  
-                  <div className="p-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="Urgent"
-                          checked={formData.tags.includes("Urgent")}
-                          onCheckedChange={() => handleTagToggle("Urgent")}
-                        />
-                        <Label htmlFor="Urgent" className="text-xs">
-                          Urgent
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="Follow-up Required"
-                          checked={formData.tags.includes("Follow-up Required")}
-                          onCheckedChange={() => handleTagToggle("Follow-up Required")}
-                        />
-                        <Label htmlFor="Follow-up Required" className="text-xs">
-                          Follow-up
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="Hot Lead"
-                          checked={formData.tags.includes("Hot Lead")}
-                          onCheckedChange={() => handleTagToggle("Hot Lead")}
-                        />
-                        <Label htmlFor="Hot Lead" className="text-xs">
-                          Hot Lead
-                        </Label>
-                      </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Private"
+                        checked={formData.tags.includes("Private")}
+                        onCheckedChange={() => handleTagToggle("Private")}
+                      />
+                        <Label htmlFor="Private" className="text-xs">
+                        Private
+                      </Label>
                     </div>
                   </div>
                 </div>
                 
-                {formData.tags.length > 0 && (
+                  <div className="p-4">
+                    <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Urgent"
+                        checked={formData.tags.includes("Urgent")}
+                        onCheckedChange={() => handleTagToggle("Urgent")}
+                      />
+                        <Label htmlFor="Urgent" className="text-xs">
+                        Urgent
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Follow-up Required"
+                        checked={formData.tags.includes("Follow-up Required")}
+                        onCheckedChange={() => handleTagToggle("Follow-up Required")}
+                      />
+                        <Label htmlFor="Follow-up Required" className="text-xs">
+                          Follow-up
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="Hot Lead"
+                        checked={formData.tags.includes("Hot Lead")}
+                        onCheckedChange={() => handleTagToggle("Hot Lead")}
+                      />
+                        <Label htmlFor="Hot Lead" className="text-xs">
+                        Hot Lead
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {formData.tags.length > 0 && (
                   <div className="border-t p-3 bg-gray-50">
                     <p className="text-xs font-medium mb-2">Selected tags:</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {formData.tags.map((tag) => (
+                  {formData.tags.map((tag) => (
                         <Badge key={tag} variant="secondary" className="text-xs py-0.5">
-                          {tag}
+                      {tag}
                           <X 
                             className="ml-1 h-3 w-3 cursor-pointer" 
                             onClick={() => handleTagToggle(tag)} 
                           />
-                        </Badge>
-                      ))}
+                    </Badge>
+                  ))}
                     </div>
-                  </div>
-                )}
+                </div>
+              )}
               </div>
             </div>
 

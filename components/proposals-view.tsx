@@ -270,6 +270,34 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
         return "outline"
     }
   }
+  
+  // Helper function to get the appropriate card class for each status
+  const getKanbanCardClass = (status: string) => {
+    switch (status) {
+      case "Draft":
+        return "kanban-card-draft"
+      case "Sent":
+        return "kanban-card-sent"
+      case "Accepted":
+        return "kanban-card-accepted"
+      default:
+        return ""
+    }
+  }
+  
+  // Helper function to get the appropriate column header class for each status
+  const getKanbanColumnHeaderClass = (status: string) => {
+    switch (status) {
+      case "Draft":
+        return "kanban-column-header-draft"
+      case "Sent":
+        return "kanban-column-header-sent"
+      case "Accepted":
+        return "kanban-column-header-accepted"
+      default:
+        return ""
+    }
+  }
 
   const statusColumns = ["Draft", "Sent", "Accepted"]
 
@@ -439,7 +467,7 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
             <SelectItem value="all">All Services</SelectItem>
             <SelectItem value="Training">Training</SelectItem>
             <SelectItem value="Pen Test">Penetration Testing</SelectItem>
-            <SelectItem value="Compliance Audit">Compliance Audit</SelectItem>
+            {/* <SelectItem value="Compliance Audit">Compliance Audit</SelectItem> */}
             <SelectItem value="Cyber Risk Assessment">Cyber Risk Assessment</SelectItem>
             <SelectItem value="Incident Response">Incident Response</SelectItem>
           </SelectContent>
@@ -469,74 +497,80 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
           </div>
         </Card>
       ) : viewMode === "table" ? (
-        <Card>
+        <Card className="table-card-glassmorphism">
           <Table>
-            <TableHeader>
+            <TableHeader className="table-header-glassmorphism">
               <TableRow>
-                <TableHead>Proposal ID</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead>Participants</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Total Price</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="table-header-cell">Proposal ID</TableHead>
+                <TableHead className="table-header-cell">Company</TableHead>
+                <TableHead className="table-header-cell">Service</TableHead>
+                <TableHead className="table-header-cell">Price</TableHead>
+                <TableHead className="table-header-cell">Status</TableHead>
+                <TableHead className="table-header-cell">Representative</TableHead>
+                <TableHead className="table-header-cell">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProposals.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
-                    No proposals found. Create your first proposal!
+              {loading ? (
+                <TableRow className="table-row-glassmorphism">
+                  <TableCell className="table-cell-glassmorphism" colSpan={7}>
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredProposals.length === 0 ? (
+                <TableRow className="table-row-glassmorphism">
+                  <TableCell className="table-cell-glassmorphism" colSpan={7}>
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <div className="relative mx-auto w-10 h-10 mb-3">
+                        <FileText className="h-10 w-10 text-gray-300" />
+                        <div className="absolute top-0 right-0 w-3 h-3 bg-red-100 rounded-full flex items-center justify-center">
+                          <X className="h-2 w-2 text-red-500" />
+                        </div>
+                      </div>
+                      <p className="text-sm font-medium text-gray-900 mb-1">No proposals found</p>
+                      <p className="text-xs text-gray-500 mb-3">Add your first proposal to get started</p>
+                      <Button size="sm" onClick={() => setShowProposalForm(true)}>
+                        <Plus className="mr-1 h-3 w-3" />
+                        Add Proposal
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredProposals.map((proposal) => (
-                  <TableRow key={proposal.id}>
-                    <TableCell className="font-medium">{proposal.proposalId}</TableCell>
-                    <TableCell>{proposal.company}</TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{proposal.serviceType}</div>
-                        <div className="text-sm text-gray-500">{proposal.subService}</div>
+                  <TableRow key={proposal.id} className="table-row-glassmorphism">
+                    <TableCell className="table-cell-glassmorphism">
+                      <div className="font-medium">{proposal.proposalId}</div>
+                      <div className="text-xs text-gray-500">{proposal.createdOn}</div>
+                    </TableCell>
+                    <TableCell className="table-cell-glassmorphism">{proposal.company}</TableCell>
+                    <TableCell className="table-cell-glassmorphism">
+                      <div>{proposal.serviceType}</div>
+                      <div className="text-xs text-gray-500">{proposal.subService}</div>
+                    </TableCell>
+                    <TableCell className="table-cell-glassmorphism">
+                      <div className="font-medium">KWD {Math.round(proposal.totalPrice).toLocaleString()}</div>
+                      <div className="text-xs text-gray-500">
+                        {proposal.duration}{proposal.participants && proposal.participants > 0 ? ` | ${proposal.participants} participants` : ''}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {proposal.participants ? (
-                        <div className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          {proposal.participants}
-                        </div>
-                      ) : (
-                        "N/A"
-                      )}
+                    <TableCell className="table-cell-glassmorphism">
+                      <Badge variant={getStatusColor(proposal.status)}>
+                        {proposal.status}
+                      </Badge>
                     </TableCell>
-                    <TableCell>{proposal.duration}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusColor(proposal.status)}>{proposal.status}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="h-4 w-4" />
-                        {proposal.totalPrice.toLocaleString()}
-                      </div>
-                    </TableCell>
-                    <TableCell>
+                    <TableCell className="table-cell-glassmorphism">{proposal.assignedRep}</TableCell>
+                    <TableCell className="table-cell-glassmorphism">
                       <div className="flex gap-2">
                         <Button variant="ghost" size="sm" onClick={() => setSelectedProposal(proposal)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {proposal.drive_folder_en && (
-                          <Button variant="ghost" size="sm" asChild title="Open English Proposal">
-                            <a href={proposal.drive_folder_en} target="_blank" rel="noopener noreferrer">
+                        {proposal.proposalLinkEN && (
+                          <Button variant="ghost" size="sm" asChild>
+                            <a href={proposal.proposalLinkEN} target="_blank" rel="noopener noreferrer">
                               <FileText className="h-4 w-4" />
-                            </a>
-                          </Button>
-                        )}
-                        {proposal.drive_folder_ar && (
-                          <Button variant="ghost" size="sm" asChild title="Open Arabic Proposal">
-                            <a href={proposal.drive_folder_ar} target="_blank" rel="noopener noreferrer">
-                              <Languages className="h-4 w-4" />
                             </a>
                           </Button>
                         )}
@@ -546,7 +580,6 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
                             size="sm" 
                             onClick={() => setDeleteProposal(proposal)}
                             className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                            title="Delete Proposal"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -564,15 +597,18 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
           {statusColumns.map((status) => (
             <div key={status} className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">{status}</h3>
+                <h3 className={`${getKanbanColumnHeaderClass(status)} inline-block`}>{status}</h3>
                 <Badge variant="secondary">{filteredProposals.filter((p) => p.status === status).length}</Badge>
               </div>
               <div className="space-y-3">
                 {filteredProposals
                   .filter((proposal) => proposal.status === status)
                   .map((proposal) => (
-                    <Card key={proposal.id} className="cursor-pointer hover:shadow-md transition-shadow" 
-                          onClick={() => setSelectedProposal(proposal)}>
+                    <Card 
+                      key={proposal.id} 
+                      className={`${getKanbanCardClass(proposal.status)} cursor-pointer transition-shadow`} 
+                      onClick={() => setSelectedProposal(proposal)}
+                    >
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-sm">{proposal.proposalId}</CardTitle>
@@ -595,9 +631,8 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
                             )}
                           </div>
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1 text-sm font-medium">
-                              <DollarSign className="h-3 w-3" />
-                              {proposal.totalPrice.toLocaleString()}
+                            <div className="text-sm font-medium">
+                              KWD {Math.round(proposal.totalPrice).toLocaleString()}
                             </div>
                             <div className="flex gap-1">
                               {proposal.drive_folder_en && (
@@ -716,27 +751,28 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
                     <p className="text-sm">{selectedProposal.duration}</p>
                   )}
                 </div>
-                {(selectedProposal.serviceType === "Training" || (editProposal && editProposal.serviceType === "Training")) && (
-                  <div>
-                    <label className="text-sm font-medium">Participants</label>
-                    {isEditing ? (
-                      <Input
-                        type="number"
-                        min="0"
-                        className="h-8 text-sm"
-                        value={editProposal?.participants || ''}
-                        onChange={(e) => {
-                          setEditProposal(prev => prev ? {
-                            ...prev, 
-                            participants: parseInt(e.target.value) || 0
-                          } : null);
-                        }}
-                      />
-                    ) : (
-                      <p className="text-sm">{selectedProposal.participants || "N/A"}</p>
-                    )}
-                  </div>
-                )}
+                                  {((selectedProposal.serviceType === "Training" || (editProposal && editProposal.serviceType === "Training")) && 
+                    (isEditing || (selectedProposal.participants && selectedProposal.participants > 0))) && (
+                    <div>
+                      <label className="text-sm font-medium">Participants</label>
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          min="0"
+                          className="h-8 text-sm"
+                          value={editProposal?.participants || ''}
+                          onChange={(e) => {
+                            setEditProposal(prev => prev ? {
+                              ...prev,
+                              participants: parseInt(e.target.value) || 0
+                            } : null);
+                          }}
+                        />
+                      ) : (
+                        <p className="text-sm">{selectedProposal.participants}</p>
+                      )}
+                    </div>
+                  )}
                 <div>
                   <label className="text-sm font-medium">Status</label>
                   {isEditing ? (
@@ -768,7 +804,7 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
                   <label className="text-sm font-medium">Total Price</label>
                   {isEditing ? (
                     <div className="flex items-center">
-                      <span className="mr-2">$</span>
+                      <span className="mr-2">KWD</span>
                       <Input
                         type="number"
                         min="0"
@@ -783,7 +819,7 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
                       />
                     </div>
                   ) : (
-                    <p className="text-sm font-medium">${selectedProposal.totalPrice.toLocaleString()}</p>
+                    <p className="text-sm font-medium">KWD {Math.round(selectedProposal.totalPrice).toLocaleString()}</p>
                   )}
                 </div>
                 <div>

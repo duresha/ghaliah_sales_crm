@@ -65,8 +65,8 @@ interface User {
 
 const serviceTypes = {
   "Training": [
-    "Security Awareness Training",
-    "Compliance Training",
+    "Awareness Training",
+    // "Compliance Training",
     "HIPAA Compliance Training",
     "ISO 27001 Training",
     "Cybersecurity Fundamentals",
@@ -77,13 +77,6 @@ const serviceTypes = {
     "Mobile Application Testing",
     "Social Engineering Testing",
     "Wireless Network Testing",
-  ],
-  "Compliance Audit": [
-    "PCI DSS Audit",
-    "GDPR Compliance Check",
-    "ISO 27001 Audit",
-    "HIPAA Compliance Audit",
-    "SOC 2 Readiness Assessment"
   ],
   "Cyber Risk Assessment": [
     "Vulnerability Assessment",
@@ -102,12 +95,12 @@ const serviceTypes = {
 }
 
 const addOnOptions = [
-  "Retesting",
   "Phishing Simulation",
   "Customization",
   "Extended Support",
   "Additional Reports",
   "On-site Training",
+  "Other"
 ]
 
 export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps) {
@@ -130,6 +123,7 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
   const [representatives, setRepresentatives] = useState<User[]>([])
   const [manualPrice, setManualPrice] = useState<number>(0)
   const [priceChanged, setPriceChanged] = useState(false)
+  const [customAddOn, setCustomAddOn] = useState<string>("")
   
   // Extended test steps with idle state
   const initialTestSteps = [
@@ -353,39 +347,81 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
   }
 
   const handleAddOnToggle = (addOn: string) => {
-    setFormData((prev) => ({
+    if (addOn === "Other") {
+      if (formData.addOns.includes("Other")) {
+        // Remove the "Other" option and any custom add-on
+        setFormData((prev) => ({
+          ...prev,
+          addOns: prev.addOns.filter((item) => item !== "Other" && item !== customAddOn),
+        }))
+        setCustomAddOn("")
+      } else {
+        // Just add the "Other" option initially
+        setFormData((prev) => ({
+          ...prev,
+          addOns: [...prev.addOns, "Other"],
+        }))
+      }
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        addOns: prev.addOns.includes(addOn) ? prev.addOns.filter((item) => item !== addOn) : [...prev.addOns, addOn],
+      }))
+    }
+  }
+
+  const handleCustomAddOnChange = (text: string) => {
+    setCustomAddOn(text)
+    
+    // If there was a previous custom add-on, remove it from the list
+    const newAddOns = formData.addOns.filter(
+      addon => addon !== customAddOn && addon !== "Other"
+    )
+    
+    // If text is non-empty, add it to the add-ons
+    if (text.trim()) {
+      newAddOns.push(text.trim())
+      newAddOns.push("Other") // Keep the "Other" checkbox selected
+    } else {
+      newAddOns.push("Other") // Keep just the "Other" checkbox selected
+    }
+    
+    setFormData(prev => ({
       ...prev,
-      addOns: prev.addOns.includes(addOn) ? prev.addOns.filter((item) => item !== addOn) : [...prev.addOns, addOn],
+      addOns: newAddOns
     }))
   }
 
   const calculateEstimatedPrice = () => {
     let basePrice = 0
 
+    // Set default prices based on service type
     if (formData.serviceType === "Training") {
-      basePrice = formData.duration === "5-day" ? 50000 : 30000
-      basePrice += formData.participants * 500
+      basePrice = 1000 // Fixed KWD 1000 for Training
     } else if (formData.serviceType === "Pen Test") {
-      basePrice = formData.duration === "5-day" ? 60000 : 40000
-    } else if (formData.serviceType === "Compliance Audit") {
-      basePrice = 45000
-    } else if (formData.serviceType === "Cyber Risk Assessment") {
-      basePrice = 55000
-    } else if (formData.serviceType === "Incident Response") {
-      basePrice = 70000
+      basePrice = 4000 // Fixed KWD 4000 for Pen Test
+    } else {
+      basePrice = 1000 // Default KWD 1000 for all other service types
     }
 
-    // Add-on pricing
-    const addOnPricing: { [key: string]: number } = {
-      Retesting: 10000,
-      "Phishing Simulation": 8000,
-      Customization: 15000,
-      "Extended Support": 12000,
-      "Additional Reports": 5000,
-      "On-site Training": 20000,
-    }
+      // Add-on pricing
+  const addOnPricing: { [key: string]: number } = {
+    "Phishing Simulation": 250,
+    Customization: 500,
+    "Extended Support": 350,
+    "Additional Reports": 200,
+    "On-site Training": 600,
+    // Default price for custom add-ons (Other)
+    "Other": 0,
+  }
 
-    const addOnTotal = formData.addOns.reduce((sum, addOn) => sum + (addOnPricing[addOn] || 0), 0)
+    const addOnTotal = formData.addOns.reduce((sum, addOn) => {
+      // Skip "Other" checkbox itself since it's just a flag
+      if (addOn === "Other") return sum;
+      
+      // Use the pricing if it exists, otherwise use a default value for custom add-ons
+      return sum + (addOnPricing[addOn] || 300); // Default KWD 300 for custom add-ons
+    }, 0);
 
     return basePrice + addOnTotal
   }
@@ -511,14 +547,17 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
       const webhookUrl = N8N_WEBHOOK_URL;
       
       // Prepare payload for n8n - include addOns here even if not stored in DB
+      // Filter out the "Other" flag from add-ons list to avoid confusion
+      const filteredAddOns = formData.addOns.filter(addon => addon !== "Other");
+      
       const payload = {
         proposalId: proposalCode,
         company: formData.company,
         service: formData.serviceType,
         subService: formData.subService,
-        participants: formData.participants,
+        participants: formData.participants || 0, // Ensure participants is 0 if not specified
         duration: formData.duration,
-        addOns: formData.addOns, // Still include addOns in webhook payload
+        addOns: filteredAddOns, // Include filtered addOns in webhook payload
         estimatedPrice: priceChanged ? manualPrice : calculateEstimatedPrice(),
         assignedRep: formData.assignedRep,
         notes: formData.notes,
@@ -675,8 +714,8 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
         return Boolean(formData.company && formData.serviceType && formData.subService)
       case 2:
         if (formData.serviceType === "Training") {
-          // For training, participants is required and must be > 0
-          return Boolean(formData.duration && formData.participants > 0)
+          // For training, participants is now optional
+          return Boolean(formData.duration)
         } else {
           // For other services, just need duration
           return Boolean(formData.duration)
@@ -785,7 +824,7 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
                     <SelectContent>
                       <SelectItem value="Training">Training</SelectItem>
                       <SelectItem value="Pen Test">Penetration Testing</SelectItem>
-                      <SelectItem value="Compliance Audit">Compliance Audit</SelectItem>
+                      {/* <SelectItem value="Compliance Audit">Compliance Audit</SelectItem> */}
                       <SelectItem value="Cyber Risk Assessment">Cyber Risk Assessment</SelectItem>
                       <SelectItem value="Incident Response">Incident Response</SelectItem>
                     </SelectContent>
@@ -844,12 +883,12 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
                 {formData.serviceType === "Training" && (
                   <div className="space-y-2">
                     <Label htmlFor="participants">
-                      Number of Participants *
+                      Number of Participants <span className="text-gray-500">(Optional)</span>
                     </Label>
                     <Input
                       id="participants"
                       type="number"
-                      min="1"
+                      min="0"
                       value={formData.participants || ""}
                       onChange={(e) =>
                         setFormData((prev) => ({ ...prev, participants: Number.parseInt(e.target.value) || 0 }))
@@ -875,13 +914,29 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Add custom add-on input when "Other" is selected */}
+                  {formData.addOns.includes("Other") && (
+                    <div className="mt-2">
+                      <Input
+                        type="text"
+                        placeholder="Specify other add-on"
+                        value={customAddOn}
+                        onChange={(e) => handleCustomAddOnChange(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+                  
                   {formData.addOns.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {formData.addOns.map((addOn) => (
-                        <Badge key={addOn} variant="secondary">
-                          {addOn}
-                        </Badge>
-                      ))}
+                      {formData.addOns
+                        .filter(addOn => addOn !== "Other") // Don't show "Other" in the badges
+                        .map((addOn) => (
+                          <Badge key={addOn} variant="secondary">
+                            {addOn}
+                          </Badge>
+                        ))}
                     </div>
                   )}
                 </div>
@@ -989,7 +1044,7 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
                     <div className="flex justify-between items-center">
                       <span className="font-medium">Estimated Price:</span>
                       <div className="text-lg font-bold text-green-600 flex items-center gap-2">
-                        <span>$</span>
+                        <span>KWD</span>
                         <Input
                           type="number"
                           min="0"

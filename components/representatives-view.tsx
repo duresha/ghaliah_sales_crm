@@ -440,10 +440,12 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="stats-card-purple">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Team Revenue</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <div className="stats-card-icon-purple">
+              <TrendingUp className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             {stats.isLoading ? (
@@ -453,16 +455,18 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
+                <div className="text-2xl font-bold">KWD {Math.round(stats.totalRevenue).toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground">From accepted proposals</p>
               </>
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="stats-card-blue">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Companies</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <div className="stats-card-icon-blue">
+              <Building2 className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             {stats.isLoading ? (
@@ -473,15 +477,17 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
             ) : (
               <>
                 <div className="text-2xl font-bold">{stats.totalCompanies}</div>
-                <p className="text-xs text-muted-foreground">Across all reps</p>
+                <p className="text-xs text-muted-foreground">Across all team members</p>
               </>
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="stats-card-green">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Proposals</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <div className="stats-card-icon-green">
+              <FileText className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             {stats.isLoading ? (
@@ -497,10 +503,12 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="stats-card-amber">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg Conversion</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <div className="stats-card-icon-amber">
+              <TrendingUp className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             {stats.isLoading ? (
@@ -556,7 +564,7 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
           </Card>
         ) : (
           filteredRepresentatives.map((rep) => (
-            <Card key={rep.id} className="hover:shadow-md transition-shadow">
+            <Card key={rep.id} className="team-card-glassmorphism">
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <Avatar>
@@ -605,7 +613,7 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Revenue</span>
-                      <span className="font-semibold">${rep.totalRevenue.toLocaleString()}</span>
+                      <span className="font-semibold">KWD {Math.round(rep.totalRevenue).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Conversion Rate</span>
@@ -641,30 +649,30 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
       </div>
 
       {filteredRepresentatives.length > 0 && (
-        <Card>
+        <Card className="table-card-glassmorphism">
           <CardHeader>
             <CardTitle>Performance Overview</CardTitle>
             <CardDescription>Detailed performance metrics for all team members</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
-              <TableHeader>
+              <TableHeader className="table-header-glassmorphism">
                 <TableRow>
-                  <TableHead>Representative</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Companies</TableHead>
-                  <TableHead>Proposals</TableHead>
-                  <TableHead>Revenue</TableHead>
-                  <TableHead>Conversion</TableHead>
-                  <TableHead>Last Activity</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="table-header-cell">Representative</TableHead>
+                  <TableHead className="table-header-cell">Role</TableHead>
+                  <TableHead className="table-header-cell">Companies</TableHead>
+                  <TableHead className="table-header-cell">Proposals</TableHead>
+                  <TableHead className="table-header-cell">Revenue</TableHead>
+                  <TableHead className="table-header-cell">Conversion</TableHead>
+                  <TableHead className="table-header-cell">Last Activity</TableHead>
+                  <TableHead className="table-header-cell">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24">
-                      <div className="flex justify-center items-center">
+                  <TableRow className="table-row-glassmorphism">
+                    <TableCell className="table-cell-glassmorphism" colSpan={8}>
+                      <div className="flex justify-center items-center py-4">
                         <Loader2 className="h-6 w-6 animate-spin mr-2" />
                         <p>Loading performance data...</p>
                       </div>
@@ -672,8 +680,8 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
                   </TableRow>
                 ) : (
                   filteredRepresentatives.map((rep) => (
-                    <TableRow key={rep.id}>
-                      <TableCell>
+                    <TableRow key={rep.id} className="table-row-glassmorphism">
+                      <TableCell className="table-cell-glassmorphism">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
                             <AvatarImage src="/placeholder-user.jpg" alt={rep.name} />
@@ -690,15 +698,15 @@ export function RepresentativesView({ userRole }: RepresentativesViewProps) {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="table-cell-glassmorphism">
                         <Badge variant={getRoleBadgeColor(rep.role)}>{rep.role}</Badge>
                       </TableCell>
-                      <TableCell>{rep.assignedCompanies || 0}</TableCell>
-                      <TableCell>{rep.assignedProposals || 0}</TableCell>
-                      <TableCell>{rep.totalRevenue > 0 ? `$${rep.totalRevenue.toLocaleString()}` : "$0"}</TableCell>
-                      <TableCell>{`${rep.conversionRate || 0}%`}</TableCell>
-                      <TableCell>{rep.lastActivity || "N/A"}</TableCell>
-                      <TableCell>
+                      <TableCell className="table-cell-glassmorphism">{rep.assignedCompanies || 0}</TableCell>
+                      <TableCell className="table-cell-glassmorphism">{rep.assignedProposals || 0}</TableCell>
+                      <TableCell className="table-cell-glassmorphism">{rep.totalRevenue > 0 ? `KWD ${Math.round(rep.totalRevenue).toLocaleString()}` : "KWD 0"}</TableCell>
+                      <TableCell className="table-cell-glassmorphism">{`${rep.conversionRate || 0}%`}</TableCell>
+                      <TableCell className="table-cell-glassmorphism">{rep.lastActivity || "N/A"}</TableCell>
+                      <TableCell className="table-cell-glassmorphism">
                         <div className="flex gap-1">
                           <Button variant="ghost" size="sm" onClick={() => handleStartEdit(rep)} className="h-8 w-8 p-0">
                             <Edit className="h-4 w-4" />

@@ -79,4 +79,39 @@ export function SparklesPreviewColorful() {
       </div>
     </div>
   );
+}
+
+export function SparklesPurpleTheme() {
+  return (
+    <div className="h-screen relative w-full bg-gradient-to-br from-purple-800 via-purple-900 to-slate-900 flex flex-col items-center justify-center overflow-hidden">
+      <div className="w-full absolute inset-0 h-screen">
+        <SparklesCore
+          id="tsparticlespurple"
+          background="transparent"
+          minSize={0.6}
+          maxSize={1.4}
+          particleDensity={80}
+          className="w-full h-full"
+          particleColor="#e9d5ff"
+          speed={0.8}
+        />
+      </div>
+      <div className="flex flex-col md:flex-row items-center gap-8 relative z-10 w-full max-w-4xl px-4">
+        {/* Content can be added here */}
+        <div className="w-full md:w-1/2 max-w-md bg-white/90 backdrop-blur-sm p-8 rounded-lg shadow-xl">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900">Login Panel</h2>
+            <p className="text-gray-500 mt-2">Example authentication form</p>
+          </div>
+        </div>
+        
+        <div className="w-full md:w-1/2 max-w-md backdrop-blur-md bg-purple-500/30 rounded-lg p-8 shadow-lg border border-white/20 text-white">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold">Ghaliah Sales CRM</h2>
+            <p className="text-white/80 mt-2">Manage your business efficiently</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 } 

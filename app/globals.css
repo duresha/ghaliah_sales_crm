@@ -10,9 +10,311 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  
+  .bg-glass {
+    @apply backdrop-blur-lg bg-white/20 border border-white/30;
+  }
+  
+  .stats-card-blue {
+    @apply bg-gradient-to-br from-blue-50/80 to-blue-100/50 backdrop-blur-md border border-blue-200/50 shadow-lg shadow-blue-100/20;
+  }
+  
+  .stats-card-green {
+    @apply bg-gradient-to-br from-green-50/80 to-green-100/50 backdrop-blur-md border border-green-200/50 shadow-lg shadow-green-100/20;
+  }
+  
+  .stats-card-purple {
+    @apply bg-gradient-to-br from-purple-50/80 to-purple-100/50 backdrop-blur-md border border-purple-200/50 shadow-lg shadow-purple-100/20;
+  }
+  
+  .stats-card-amber {
+    @apply bg-gradient-to-br from-amber-50/80 to-amber-100/50 backdrop-blur-md border border-amber-200/50 shadow-lg shadow-amber-100/20;
+  }
+  
+  .stats-card-icon-blue {
+    @apply p-2 rounded-full bg-blue-100/80 text-blue-600;
+  }
+  
+  .stats-card-icon-green {
+    @apply p-2 rounded-full bg-green-100/80 text-green-600;
+  }
+  
+  .stats-card-icon-purple {
+    @apply p-2 rounded-full bg-purple-100/80 text-purple-600;
+  }
+  
+  .stats-card-icon-amber {
+    @apply p-2 rounded-full bg-amber-100/80 text-amber-600;
+  }
+  
+  .tabs-glassmorphism {
+    @apply bg-gradient-to-r from-purple-50/80 via-blue-50/70 to-purple-50/80 backdrop-blur-md border border-purple-100/50 shadow-md;
+  }
+  
+  .tab-trigger-glassmorphism {
+    @apply bg-white/40 backdrop-blur-sm border border-white/30 shadow-sm;
+  }
+  
+  .tab-trigger-active {
+    @apply bg-gradient-to-r from-purple-100/80 to-blue-100/80 border-purple-200/50 shadow-md text-purple-800 font-semibold;
+  }
+  
+  /* Table Glassmorphism Styles */
+  .table-glassmorphism {
+    @apply bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-md border border-gray-100/50 shadow-lg rounded-lg overflow-hidden;
+  }
+  
+  .table-header-glassmorphism {
+    @apply bg-gradient-to-r from-blue-50/80 via-purple-50/60 to-blue-50/80 backdrop-blur-sm;
+  }
+  
+  .table-header-cell {
+    @apply h-12 px-4 text-left font-semibold text-gray-700 py-4 border-b border-gray-100/70;
+  }
+  
+  .table-row-glassmorphism {
+    @apply border-b border-gray-100/50 hover:bg-gradient-to-r hover:from-purple-50/30 hover:to-blue-50/30 transition-all duration-200;
+  }
+  
+  .table-row-glassmorphism:last-child {
+    @apply border-0;
+  }
+  
+  .table-cell-glassmorphism {
+    @apply p-4 align-middle text-sm;
+  }
+  
+  .table-card-glassmorphism {
+    @apply bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-md border border-gray-100/60 shadow-lg rounded-lg overflow-hidden;
+  }
+  
+  /* Team Member Card Glassmorphism */
+  .team-card-glassmorphism {
+    @apply bg-gradient-to-br from-gray-50/80 to-gray-100/50 backdrop-blur-md border border-gray-200/50 shadow-md hover:shadow-lg transition-all duration-200;
+  }
+  
+  /* Dashboard info cards */
+  .info-card {
+    @apply bg-gradient-to-br from-white/90 to-white/60 backdrop-blur-sm border border-gray-100 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden relative;
+  }
+  
+  .info-card::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-br from-purple-100/10 via-blue-100/5 to-amber-100/10 opacity-0 transition-opacity duration-300;
+    z-index: -1;
+  }
+  
+  .info-card:hover::before {
+    @apply opacity-100;
+  }
+  
+  .info-card-header {
+    @apply bg-gradient-to-r from-gray-50/80 to-gray-50/50 border-b border-gray-100/50 px-6 py-4;
+  }
+  
+  .info-card-title {
+    @apply flex items-center gap-2 text-lg font-semibold text-gray-800;
+  }
+  
+  .info-card-icon {
+    @apply p-1.5 rounded-full bg-gradient-to-br from-purple-100/50 to-blue-100/50 text-purple-700;
+  }
+  
+  .info-card-content {
+    @apply p-5 space-y-4;
+  }
+  
+  .info-card-item {
+    @apply flex items-center justify-between p-2 rounded-lg hover:bg-gray-50/80 transition-colors duration-200;
+  }
+  
+  .info-card-item-high {
+    @apply border-l-4 border-red-400/70 pl-3;
+  }
+  
+  .info-card-item-medium {
+    @apply border-l-4 border-blue-400/70 pl-3;
+  }
+  
+  .info-card-item-low {
+    @apply border-l-4 border-green-400/70 pl-3;
+  }
+  
+  .info-card-item-success {
+    @apply border-l-4 border-green-400/70 pl-3;
+  }
+  
+  .info-card-item-pending {
+    @apply border-l-4 border-amber-400/70 pl-3;
+  }
+  
+  .info-card-item-info {
+    @apply border-l-4 border-blue-400/70 pl-3;
+  }
+  
+  /* Kanban card styles for Companies */
+  .kanban-card-lead {
+    @apply bg-gradient-to-br from-blue-50/80 to-blue-100/50 backdrop-blur-md border border-blue-200/50 shadow-md hover:shadow-lg transition-all duration-200;
+  }
+  
+  .kanban-card-proposal-sent {
+    @apply bg-gradient-to-br from-amber-50/80 to-amber-100/50 backdrop-blur-md border border-amber-200/50 shadow-md hover:shadow-lg transition-all duration-200;
+  }
+  
+  .kanban-card-follow-up {
+    @apply bg-gradient-to-br from-purple-50/80 to-purple-100/50 backdrop-blur-md border border-purple-200/50 shadow-md hover:shadow-lg transition-all duration-200;
+  }
+  
+  .kanban-card-accepted {
+    @apply bg-gradient-to-br from-green-50/80 to-green-100/50 backdrop-blur-md border border-green-200/50 shadow-md hover:shadow-lg transition-all duration-200;
+  }
+  
+  .kanban-card-closed {
+    @apply bg-gradient-to-br from-gray-50/80 to-gray-100/50 backdrop-blur-md border border-gray-200/50 shadow-md hover:shadow-lg transition-all duration-200;
+  }
+  
+  /* Kanban card styles for Proposals */
+  .kanban-card-draft {
+    @apply bg-gradient-to-br from-gray-50/80 to-gray-100/50 backdrop-blur-md border border-gray-200/50 shadow-md hover:shadow-lg transition-all duration-200;
+  }
+  
+  .kanban-card-sent {
+    @apply bg-gradient-to-br from-blue-50/80 to-blue-100/50 backdrop-blur-md border border-blue-200/50 shadow-md hover:shadow-lg transition-all duration-200;
+  }
+  
+  /* Kanban column header styles */
+  .kanban-column-header-lead {
+    @apply bg-blue-100/50 text-blue-800 font-medium px-3 py-1.5 rounded-md;
+  }
+  
+  .kanban-column-header-proposal-sent {
+    @apply bg-amber-100/50 text-amber-800 font-medium px-3 py-1.5 rounded-md;
+  }
+  
+  .kanban-column-header-follow-up {
+    @apply bg-purple-100/50 text-purple-800 font-medium px-3 py-1.5 rounded-md;
+  }
+  
+  .kanban-column-header-accepted {
+    @apply bg-green-100/50 text-green-800 font-medium px-3 py-1.5 rounded-md;
+  }
+  
+  .kanban-column-header-closed {
+    @apply bg-gray-100/50 text-gray-800 font-medium px-3 py-1.5 rounded-md;
+  }
+  
+  .kanban-column-header-draft {
+    @apply bg-gray-100/50 text-gray-800 font-medium px-3 py-1.5 rounded-md;
+  }
+  
+  .kanban-column-header-sent {
+    @apply bg-blue-100/50 text-blue-800 font-medium px-3 py-1.5 rounded-md;
+  }
 }
 
 @layer base {
+  @property --pos-x {
+    syntax: '<percentage>';
+    initial-value: 11.14%;
+    inherits: false;
+  }
+
+  @property --pos-y {
+    syntax: '<percentage>';
+    initial-value: 140%;
+    inherits: false;
+  }
+
+  @property --spread-x {
+    syntax: '<percentage>';
+    initial-value: 150%;
+    inherits: false;
+  }
+
+  @property --spread-y {
+    syntax: '<percentage>';
+    initial-value: 180.06%;
+    inherits: false;
+  }
+
+  @property --color-1 {
+    syntax: '<color>';
+    initial-value: #000;
+    inherits: false;
+  }
+
+  @property --color-2 {
+    syntax: '<color>';
+    initial-value: #08012c;
+    inherits: false;
+  }
+
+  @property --color-3 {
+    syntax: '<color>';
+    initial-value: #4e1e40;
+    inherits: false;
+  }
+
+  @property --color-4 {
+    syntax: '<color>';
+    initial-value: #70464e;
+    inherits: false;
+  }
+
+  @property --color-5 {
+    syntax: '<color>';
+    initial-value: #88394c;
+    inherits: false;
+  }
+
+  @property --border-angle {
+    syntax: '<angle>';
+    initial-value: 20deg;
+    inherits: true;
+  }
+
+  @property --border-color-1 {
+    syntax: '<color>';
+    initial-value: hsla(340, 75%, 60%, 0.2);
+    inherits: true;
+  }
+
+  @property --border-color-2 {
+    syntax: '<color>';
+    initial-value: hsla(340, 75%, 40%, 0.75);
+    inherits: true;
+  }
+
+  @property --stop-1 {
+    syntax: '<percentage>';
+    initial-value: 37.35%;
+    inherits: false;
+  }
+
+  @property --stop-2 {
+    syntax: '<percentage>';
+    initial-value: 61.36%;
+    inherits: false;
+  }
+
+  @property --stop-3 {
+    syntax: '<percentage>';
+    initial-value: 78.42%;
+    inherits: false;
+  }
+
+  @property --stop-4 {
+    syntax: '<percentage>';
+    initial-value: 89.52%;
+    inherits: false;
+  }
+
+  @property --stop-5 {
+    syntax: '<percentage>';
+    initial-value: 100%;
+    inherits: false;
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
@@ -20,19 +322,19 @@ body {
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
+    --primary: 273 100% 50%;
     --primary-foreground: 0 0% 98%;
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9%;
     --muted: 0 0% 96.1%;
     --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --accent: 273 75% 95%;
+    --accent-foreground: 273 100% 25%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --ring: 273 100% 50%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
@@ -41,7 +343,7 @@ body {
     --radius: 0.5rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 273 100% 50%;
     --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
@@ -55,19 +357,19 @@ body {
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
+    --primary: 273 100% 60%;
     --primary-foreground: 0 0% 9%;
     --secondary: 0 0% 14.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 14.9%;
     --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
+    --accent: 273 60% 25%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --ring: 273 100% 60%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -75,12 +377,110 @@ body {
     --chart-5: 340 75% 55%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary: 273 80% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer components {
+  .gradient-button {
+    @apply relative appearance-none cursor-pointer;
+    background: radial-gradient(
+      var(--spread-x) var(--spread-y) at var(--pos-x) var(--pos-y),
+      var(--color-1) var(--stop-1),
+      var(--color-2) var(--stop-2),
+      var(--color-3) var(--stop-3),
+      var(--color-4) var(--stop-4),
+      var(--color-5) var(--stop-5)
+    );
+    transition:
+      --pos-x 0.5s,
+      --pos-y 0.5s,
+      --spread-x 0.5s,
+      --spread-y 0.5s,
+      --color-1 0.5s,
+      --color-2 0.5s,
+      --color-3 0.5s,
+      --color-4 0.5s,
+      --color-5 0.5s,
+      --border-angle 0.5s,
+      --border-color-1 0.5s,
+      --border-color-2 0.5s,
+      --stop-1 0.5s,
+      --stop-2 0.5s,
+      --stop-3 0.5s,
+      --stop-4 0.5s,
+      --stop-5 0.5s;
+  }
+
+  .gradient-button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      var(--border-angle),
+      var(--border-color-1),
+      var(--border-color-2)
+    );
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .gradient-button:hover {
+    --pos-x: 0%;
+    --pos-y: 91.51%;
+    --spread-x: 120.24%;
+    --spread-y: 103.18%;
+    --color-1: #c96287;
+    --color-2: #c66c64;
+    --color-3: #cc7d23;
+    --color-4: #37140a;
+    --color-5: #000;
+    --border-angle: 190deg;
+    --border-color-1: hsla(340, 78%, 90%, 0.1);
+    --border-color-2: hsla(340, 75%, 90%, 0.6);
+    --stop-1: 0%;
+    --stop-2: 8.8%;
+    --stop-3: 21.44%;
+    --stop-4: 71.34%;
+    --stop-5: 85.76%;
+  }
+
+  .gradient-button-variant {
+    --color-1: #000022;
+    --color-2: #1f3f6d;
+    --color-3: #469396;
+    --color-4: #f1ffa5;
+    --border-angle: 200deg;
+    --border-color-1: hsla(320, 75%, 90%, 0.6);
+    --border-color-2: hsla(320, 50%, 90%, 0.15);
+  }
+
+  .gradient-button-variant:hover {
+    --pos-x: 0%;
+    --pos-y: 95.51%;
+    --spread-x: 110.24%;
+    --spread-y: 110.2%;
+    --color-1: #000020;
+    --color-2: #f1ffa5;
+    --color-3: #469396;
+    --color-4: #1f3f6d;
+    --color-5: #000;
+    --stop-1: 0%;
+    --stop-2: 10%;
+    --stop-3: 35.44%;
+    --stop-4: 71.34%;
+    --stop-5: 90.76%;
+    --border-angle: 210deg;
+    --border-color-1: hsla(320, 75%, 90%, 0.2);
+    --border-color-2: hsla(320, 50%, 90%, 0.75);
   }
 }
 

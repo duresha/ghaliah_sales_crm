@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { LogOut, Settings, Bell, Globe } from "lucide-react"
+import { LogOut, Settings, Bell, Globe, ExternalLink } from "lucide-react"
 import { LucideUser } from "lucide-react"
 
 interface UserProps {
@@ -107,6 +107,17 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Learn Button */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="border-purple-500 text-purple-600 hover:bg-purple-500 hover:text-white transition-colors"
+                onClick={() => window.open("https://ghaliah.sulitechkw.com/", "_blank")}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Learn
+              </Button>
+
               {/* //TODO: Add language toggle  and Notification bell*/}
               {/* <Button variant="ghost" size="sm" onClick={toggleLanguage}>
                 <Globe className="h-4 w-4 mr-2" />

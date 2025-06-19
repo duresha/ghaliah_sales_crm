@@ -277,73 +277,92 @@ export function ActivitiesView({ userRole }: ActivitiesViewProps) {
         </Select>
       </div>
 
-      <Card>
+      <Card className="table-card-glassmorphism">
         <Table>
-          <TableHeader>
+          <TableHeader className="table-header-glassmorphism">
             <TableRow>
-              <TableHead>Activity</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Representative</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="table-header-cell">Activity</TableHead>
+              <TableHead className="table-header-cell">Company</TableHead>
+              <TableHead className="table-header-cell">Description</TableHead>
+              <TableHead className="table-header-cell">Representative</TableHead>
+              <TableHead className="table-header-cell">Date & Source</TableHead>
+              <TableHead className="table-header-cell">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredActivities.map((activity) => {
-              const IconComponent = getActivityIcon(activity.activityType)
-              return (
-                <TableRow key={activity.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <IconComponent className={`h-4 w-4 ${getActivityColor(activity.activityType)}`} />
-                      <div>
-                        <div className="font-medium">{activity.activityType}</div>
-                        <div className="text-xs text-gray-500">{activity.activityId}</div>
+            {filteredActivities.length === 0 ? (
+              <TableRow className="table-row-glassmorphism">
+                <TableCell className="table-cell-glassmorphism" colSpan={6}>
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <div className="relative mx-auto w-10 h-10 mb-3">
+                      <FileText className="h-10 w-10 text-gray-300" />
+                      <div className="absolute top-0 right-0 w-3 h-3 bg-red-100 rounded-full flex items-center justify-center">
+                        <X className="h-2 w-2 text-red-500" />
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{activity.company}</div>
-                      {activity.proposal && <div className="text-xs text-gray-500">{activity.proposal}</div>}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm max-w-md truncate" title={activity.description}>
-                      {activity.description}
-                    </p>
-                  </TableCell>
-                  <TableCell>{activity.rep}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      {activity.date}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={activity.autoTriggered ? "secondary" : "outline"}>
-                      {activity.autoTriggered ? "Auto" : "Manual"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedActivity(activity)}>
-                      View
+                    <p className="text-sm font-medium text-gray-900 mb-1">No activities found</p>
+                    <p className="text-xs text-gray-500 mb-3">Add your first activity to get started</p>
+                    <Button size="sm" onClick={() => setShowActivityForm(true)}>
+                      <Plus className="mr-1 h-3 w-3" />
+                      Add Activity
                     </Button>
-                  </TableCell>
-                </TableRow>
-              )
-            })}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredActivities.map((activity) => {
+                const IconComponent = getActivityIcon(activity.activityType)
+                return (
+                  <TableRow key={activity.id} className="table-row-glassmorphism">
+                    <TableCell className="table-cell-glassmorphism">
+                      <div className="flex items-center gap-2">
+                        <IconComponent className={`h-4 w-4 ${getActivityColor(activity.activityType)}`} />
+                        <div>
+                          <div className="font-medium">{activity.activityType}</div>
+                          <div className="text-xs text-gray-500">{activity.activityId}</div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="table-cell-glassmorphism">
+                      <div>
+                        <div className="font-medium">{activity.company}</div>
+                        {activity.proposal && <div className="text-xs text-gray-500">{activity.proposal}</div>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="table-cell-glassmorphism">
+                      <p className="text-sm max-w-md truncate" title={activity.description}>
+                        {activity.description}
+                      </p>
+                    </TableCell>
+                    <TableCell className="table-cell-glassmorphism">{activity.rep}</TableCell>
+                    <TableCell className="table-cell-glassmorphism">
+                      <div className="font-medium">{activity.date}</div>
+                      <div className="text-xs text-gray-500">
+                        <Badge variant={activity.autoTriggered ? "secondary" : "outline"} className="text-xs">
+                          {activity.autoTriggered ? "Auto" : "Manual"}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="table-cell-glassmorphism">
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedActivity(activity)}>
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            )}
           </TableBody>
         </Table>
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="stats-card-blue">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Activities</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <div className="stats-card-icon-blue">
+              <Activity className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activities.length}</div>
@@ -353,30 +372,36 @@ export function ActivitiesView({ userRole }: ActivitiesViewProps) {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="stats-card-purple">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Today's Activities</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <div className="stats-card-icon-purple">
+              <Calendar className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activities.filter((a) => a.date === "2024-12-10").length}</div>
             <p className="text-xs text-muted-foreground">Active day</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="stats-card-green">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Calls Made</CardTitle>
-            <Phone className="h-4 w-4 text-muted-foreground" />
+            <div className="stats-card-icon-green">
+              <Phone className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activities.filter((a) => a.activityType === "Call").length}</div>
             <p className="text-xs text-muted-foreground">This week</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="stats-card-amber">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Reminders</CardTitle>
-            <Bell className="h-4 w-4 text-muted-foreground" />
+            <div className="stats-card-icon-amber">
+              <Bell className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">

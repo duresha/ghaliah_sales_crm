@@ -338,6 +338,42 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
 
   const statusColumns = ["Lead", "Proposal Sent", "Follow-Up", "Accepted", "Closed"]
 
+  // Helper function to get the appropriate card class for each status
+  const getKanbanCardClass = (status: string) => {
+    switch (status) {
+      case "Lead":
+        return "kanban-card-lead"
+      case "Proposal Sent":
+        return "kanban-card-proposal-sent"
+      case "Follow-Up":
+        return "kanban-card-follow-up"
+      case "Accepted":
+        return "kanban-card-accepted"
+      case "Closed":
+        return "kanban-card-closed"
+      default:
+        return ""
+    }
+  }
+  
+  // Helper function to get the appropriate column header class for each status
+  const getKanbanColumnHeaderClass = (status: string) => {
+    switch (status) {
+      case "Lead":
+        return "kanban-column-header-lead"
+      case "Proposal Sent":
+        return "kanban-column-header-proposal-sent"
+      case "Follow-Up":
+        return "kanban-column-header-follow-up"
+      case "Accepted":
+        return "kanban-column-header-accepted"
+      case "Closed":
+        return "kanban-column-header-closed"
+      default:
+        return ""
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -420,24 +456,32 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
           </div>
         </Card>
       ) : viewMode === "table" ? (
-        <Card>
+        <Card className="table-card-glassmorphism">
           <Table>
-            <TableHeader>
+            <TableHeader className="table-header-glassmorphism">
               <TableRow>
-                <TableHead>Company</TableHead>
-                <TableHead>Industry</TableHead>
-                <TableHead>Region</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Assigned Rep</TableHead>
-                <TableHead>Reminder Date</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="table-header-cell">Company</TableHead>
+                <TableHead className="table-header-cell">Industry</TableHead>
+                <TableHead className="table-header-cell">Region</TableHead>
+                <TableHead className="table-header-cell">Status</TableHead>
+                <TableHead className="table-header-cell">Assigned Rep</TableHead>
+                <TableHead className="table-header-cell">Reminder Date</TableHead>
+                <TableHead className="table-header-cell">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCompanies.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    <div className="flex flex-col items-center justify-center">
+              {isLoading ? (
+                <TableRow className="table-row-glassmorphism">
+                  <TableCell className="table-cell-glassmorphism" colSpan={7}>
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredCompanies.length === 0 ? (
+                <TableRow className="table-row-glassmorphism">
+                  <TableCell className="table-cell-glassmorphism" colSpan={7}>
+                    <div className="flex flex-col items-center justify-center py-8">
                       <div className="relative mx-auto w-10 h-10 mb-3">
                         <FileText className="h-10 w-10 text-gray-300" />
                         <div className="absolute top-0 right-0 w-3 h-3 bg-red-100 rounded-full flex items-center justify-center">
@@ -455,8 +499,8 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
                 </TableRow>
               ) : (
                 filteredCompanies.map((company) => (
-                  <TableRow key={company.id}>
-                    <TableCell>
+                  <TableRow key={company.id} className="table-row-glassmorphism">
+                    <TableCell className="table-cell-glassmorphism">
                       <div>
                         <div className="font-medium">{company.name}</div>
                         <div className="flex gap-1 mt-1">
@@ -465,17 +509,22 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
                               {tag}
                             </Badge>
                           ))}
+                          {company.tags && company.tags.length > 2 && (
+                            <Badge variant="outline" className="text-xs">+{company.tags.length - 2}</Badge>
+                          )}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{company.industry}</TableCell>
-                    <TableCell>{company.region}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusColor(company.status)}>{company.status}</Badge>
+                    <TableCell className="table-cell-glassmorphism">{company.industry}</TableCell>
+                    <TableCell className="table-cell-glassmorphism">{company.region}</TableCell>
+                    <TableCell className="table-cell-glassmorphism">
+                      <Badge variant={getStatusColor(company.status) as any}>
+                        {company.status}
+                      </Badge>
                     </TableCell>
-                    <TableCell>{company.assignedRep}</TableCell>
-                    <TableCell>{company.reminderDate}</TableCell>
-                    <TableCell>
+                    <TableCell className="table-cell-glassmorphism">{company.assignedRep}</TableCell>
+                    <TableCell className="table-cell-glassmorphism">{company.reminderDate}</TableCell>
+                    <TableCell className="table-cell-glassmorphism">
                       <div className="flex gap-2">
                         <Button variant="ghost" size="sm" onClick={() => setSelectedCompany(company)}>
                           <Eye className="h-4 w-4" />
@@ -518,15 +567,18 @@ export function CompaniesView({ userRole }: CompaniesViewProps) {
           {statusColumns.map((status) => (
             <div key={status} className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">{status}</h3>
+                <h3 className={`${getKanbanColumnHeaderClass(status)} inline-block`}>{status}</h3>
                 <Badge variant="secondary">{filteredCompanies.filter((c) => c.status === status).length}</Badge>
               </div>
               <div className="space-y-3">
                 {filteredCompanies
                   .filter((company) => company.status === status)
                   .map((company) => (
-                    <Card key={company.id} className="cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => setSelectedCompany(company)}>
+                    <Card 
+                      key={company.id} 
+                      className={`${getKanbanCardClass(company.status)} cursor-pointer transition-shadow`}
+                      onClick={() => setSelectedCompany(company)}
+                    >
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm">{company.name}</CardTitle>
                         <CardDescription className="text-xs">
