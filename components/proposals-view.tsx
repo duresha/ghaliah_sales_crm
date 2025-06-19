@@ -468,7 +468,7 @@ export function ProposalsView({ userRole }: ProposalsViewProps) {
             <SelectItem value="Training">Training</SelectItem>
             <SelectItem value="Pen Test">Penetration Testing</SelectItem>
             {/* <SelectItem value="Compliance Audit">Compliance Audit</SelectItem> */}
-            <SelectItem value="Cyber Risk Assessment">Cyber Risk Assessment</SelectItem>
+            <SelectItem value="Risk Assessment">Risk Assessment</SelectItem>
             <SelectItem value="Incident Response">Incident Response</SelectItem>
           </SelectContent>
         </Select>

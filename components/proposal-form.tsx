@@ -76,9 +76,8 @@ const serviceTypes = {
     "Web Application Testing",
     "Mobile Application Testing",
     "Social Engineering Testing",
-    "Wireless Network Testing",
   ],
-  "Cyber Risk Assessment": [
+  "Risk Assessment": [
     "Vulnerability Assessment",
     "Risk Management Framework",
     "Supply Chain Risk Assessment",
@@ -91,15 +90,33 @@ const serviceTypes = {
     "Digital Forensics",
     "Crisis Management",
     "Post-Incident Review"
+  ],
+  "Source Code Review": [
+    "Web Application Code Review",
+    "Mobile Application Code Review",
+    "API Security Review",
+    "Third-Party Library Assessment",
+    "Custom Software Security Audit"
   ]
 }
 
-const addOnOptions = [
+// Base add-on options
+const baseAddOnOptions = [
   "Phishing Simulation",
-  "Customization",
+  "Online Training",
   "Extended Support",
   "Additional Reports",
   "On-site Training",
+  "Other"
+]
+
+// Penetration testing specific add-on options
+const penTestAddOnOptions = [
+  "Phishing Simulation",
+  "White Box Testing",
+  "Gray Box Testing",
+  "Black Box Testing",
+  "Extended Support",
   "Other"
 ]
 
@@ -124,6 +141,8 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
   const [manualPrice, setManualPrice] = useState<number>(0)
   const [priceChanged, setPriceChanged] = useState(false)
   const [customAddOn, setCustomAddOn] = useState<string>("")
+  // Add state for current add-on options
+  const [currentAddOnOptions, setCurrentAddOnOptions] = useState<string[]>(baseAddOnOptions)
   
   // Extended test steps with idle state
   const initialTestSteps = [
@@ -339,11 +358,31 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
   }, [])
 
   const handleServiceTypeChange = (value: string) => {
-    setFormData((prev) => ({
+    // Reset sub-service selection
+    setFormData(prev => ({
       ...prev,
       serviceType: value,
-      subService: "", // Reset sub-service when service type changes
+      subService: ""
     }))
+    
+    // Update available add-on options based on service type
+    if (value === "Pen Test") {
+      setCurrentAddOnOptions(penTestAddOnOptions)
+      
+      // Remove any add-ons that are no longer available
+      const filteredAddOns = formData.addOns.filter(addon => 
+        addon === "Other" || 
+        customAddOn.includes(addon) || 
+        penTestAddOnOptions.includes(addon)
+      )
+      
+      setFormData(prev => ({
+        ...prev,
+        addOns: filteredAddOns
+      }))
+    } else {
+      setCurrentAddOnOptions(baseAddOnOptions)
+    }
   }
 
   const handleAddOnToggle = (addOn: string) => {
@@ -374,13 +413,15 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
     setCustomAddOn(text)
     
     // If there was a previous custom add-on, remove it from the list
-    const newAddOns = formData.addOns.filter(
-      addon => addon !== customAddOn && addon !== "Other"
+    let newAddOns = formData.addOns.filter(
+      addon => addon !== "Other" && !customAddOn.split(',').map(item => item.trim()).includes(addon)
     )
     
-    // If text is non-empty, add it to the add-ons
+    // If text is non-empty, process comma-separated values
     if (text.trim()) {
-      newAddOns.push(text.trim())
+      // Split by comma and add each item as a separate add-on
+      const customItems = text.split(',').map(item => item.trim()).filter(item => item !== '')
+      newAddOns = [...newAddOns, ...customItems]
       newAddOns.push("Other") // Keep the "Other" checkbox selected
     } else {
       newAddOns.push("Other") // Keep just the "Other" checkbox selected
@@ -825,8 +866,9 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
                       <SelectItem value="Training">Training</SelectItem>
                       <SelectItem value="Pen Test">Penetration Testing</SelectItem>
                       {/* <SelectItem value="Compliance Audit">Compliance Audit</SelectItem> */}
-                      <SelectItem value="Cyber Risk Assessment">Cyber Risk Assessment</SelectItem>
+                      <SelectItem value="Risk Assessment">Risk Assessment</SelectItem>
                       <SelectItem value="Incident Response">Incident Response</SelectItem>
+                      <SelectItem value="Source Code Review">Source Code Review</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -901,7 +943,7 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
                 <div className="space-y-2">
                   <Label>Add-ons</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    {addOnOptions.map((addOn) => (
+                    {currentAddOnOptions.map((addOn: string) => (
                       <div key={addOn} className="flex items-center space-x-2">
                         <Checkbox
                           id={addOn}
@@ -920,11 +962,12 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
                     <div className="mt-2">
                       <Input
                         type="text"
-                        placeholder="Specify other add-on"
+                        placeholder="Add comma-separated add-ons"
                         value={customAddOn}
                         onChange={(e) => handleCustomAddOnChange(e.target.value)}
-                        className="w-full"
+                        className="w-full md:w-1/2 lg:w-1/3"
                       />
+                      <p className="mt-1 text-xs text-gray-500">Separate multiple items with commas</p>
                     </div>
                   )}
                   
@@ -932,8 +975,8 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
                     <div className="flex flex-wrap gap-1 mt-2">
                       {formData.addOns
                         .filter(addOn => addOn !== "Other") // Don't show "Other" in the badges
-                        .map((addOn) => (
-                          <Badge key={addOn} variant="secondary">
+                        .map((addOn, index) => (
+                          <Badge key={`${addOn}-${index}`} variant="secondary">
                             {addOn}
                           </Badge>
                         ))}
@@ -1024,11 +1067,13 @@ export function ProposalForm({ onClose, onSubmit, userRole }: ProposalFormProps)
                     <div>
                       <span className="font-medium text-sm">Add-ons:</span>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {formData.addOns.map((addOn) => (
-                          <Badge key={addOn} variant="outline" className="text-xs">
-                            {addOn}
-                          </Badge>
-                        ))}
+                        {formData.addOns
+                          .filter(addOn => addOn !== "Other")
+                          .map((addOn, index) => (
+                            <Badge key={`review-${addOn}-${index}`} variant="outline" className="text-xs">
+                              {addOn}
+                            </Badge>
+                          ))}
                       </div>
                     </div>
                   )}
