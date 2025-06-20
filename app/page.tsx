@@ -219,6 +219,16 @@ export default function LoginPage() {
               <p>rawam_manager@gmail.com / manager@123</p>
               <p>rep@gmail.com / rep@123</p>
             </div>
+            
+            <div className="mt-4 flex justify-center">
+              <Button 
+                variant="link" 
+                className="text-purple-600 hover:text-purple-700 text-sm"
+                onClick={() => router.push('/about')}
+              >
+                About Ghaliah
+              </Button>
+            </div>
           </CardContent>
         </Card>
         

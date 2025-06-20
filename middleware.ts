@@ -17,7 +17,7 @@ export default withAuth(
         const { pathname } = req.nextUrl
         
         // Allow public routes even when not logged in
-        if (pathname === '/' || pathname.startsWith('/api/auth')) {
+        if (pathname === '/' || pathname === '/about' || pathname.startsWith('/api/auth')) {
           return true
         }
         
